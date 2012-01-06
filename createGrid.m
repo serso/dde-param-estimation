@@ -3,7 +3,7 @@
 % Elements of t closest to grid knots are used instead of exact knots 
 % (i.e. the grid is not uniformly distributed)
 %
-% @return tResult - grif of N elements (from min(t) to max(t) with use of some elelemts of t)
+% @return tResult - grid of N elements (from min(t) to max(t) with use of some elelemts of t)
 % @return tUsedResult - array, i-th element shows how many points of t are closest to current (i-th) knot 
 function [tResult, tUsedResult] = createGrid(t, N)
 

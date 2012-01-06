@@ -111,9 +111,9 @@ else
     options = optimset (options, 'GradConstr','off');
 end
 
-    function lResult = hessianF (xArg, lambdaArg)
-        lResult = hessian(xArg, lambdaArg.eqnonlin, H, odeFHess, tGrid, N, p, method, delays, delayF);
-    end
+function lResult = hessianF (xArg, lambdaArg)
+    lResult = hessian(xArg, lambdaArg.eqnonlin, H, odeFHess, tGrid, N, p, method, delays, delayF);
+end
 
 if ( ~isempty(odeFHess) && ~strcmp(method, 'rk4') )
     options = optimset (options, 'Hessian','user-supplied', 'HessFcn', @hessianF);
@@ -151,6 +151,9 @@ xConst = x' * x;
     end
 
 %% solving the task
+
+fminconTimerId = tic;
+
 [solution, sosResult, exitflagResult, outputResult, lambdaResult, gradResult, hessResult] = ...
     fmincon( ...
     @(xArg)lsf(xArg), ...
@@ -159,12 +162,16 @@ xConst = x' * x;
     @(xArg)constraints(odeF, odeFGrad, [], xArg, tGrid, N, p, delays, delayF, method), ...
     options);
 
-% sqpOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 3000);
-% sqpOptions = optimset(sqpOptions, 'DerivativeCheck', 'off');
-% sqpOptions = optimset(sqpOptions, 'FinDiffType', 'central');
-% sqpOptions = optimset(sqpOptions, 'TolFun', 1e-2);
-% sqpOptions = optimset(sqpOptions, 'TolCon', 1e-2);
-% sqpOptions = optimset(sqpOptions, 'TolX', 1e-2);
+fminconTimeResult = toc(fminconTimerId);
+
+sqpOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 3000);
+sqpOptions = optimset(sqpOptions, 'DerivativeCheck', 'off');
+sqpOptions = optimset(sqpOptions, 'FinDiffType', 'central');
+sqpOptions = optimset(sqpOptions, 'TolFun', 1e-2);
+sqpOptions = optimset(sqpOptions, 'TolCon', 1e-2);
+sqpOptions = optimset(sqpOptions, 'TolX', 1e-2);
+
+% sqpTimerId = tic;
 % 
 % [sqpSolution] = sqp(    ...
 %     N + p, N - 1, ...
@@ -178,11 +185,16 @@ xConst = x' * x;
 %     debug, ...
 %     lb, ub);
 % 
+% sqpTimeResult = toc(sqpTimerId);
+% 
 % thetaResult = solution( N + 1 : N + p );
 % sqpThetaResult = sqpSolution( N + 1 : N + p );
 % 
 % display('ThetaResult - SqpThetaResult');
 % display(thetaResult - sqpThetaResult);
+% 
+% display(sprintf('Time for fmincon: %0.3f s', fminconTimeResult));
+% display(sprintf('Time for sqp: %0.3f s', sqpTimeResult));
 
 %% preparing result
 thetaResult = solution( N + 1 : N + p );

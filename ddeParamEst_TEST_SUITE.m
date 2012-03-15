@@ -82,13 +82,13 @@ clearData = true;
 % methods = {'euler' 'backward_euler' 'box' 'rk4'};
 
 % number of known points (i.e. values of function x(t))
-N = 100;
+N = 1000;
 
-xSigmaError = 0.0;
+xSigmaError = 0.02;
 tSigmaError = 0.0;
 
-options.xTol = 10^-2;
-options.thetaTol = 10^-2;
+options.xTol = 10^-4;
+options.thetaTol = 10^-4;
 
 % optOptions = optimset('Algorithm', 'sqp');
 optOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 6000);
@@ -118,7 +118,7 @@ options.sqpOptions = sqpOptions;
 % options.sqpOptions = sqpOptions;
 
 %method = 'backward_euler';
-options.method = 'box';
+options.method = 'rk4';
 
 %options.method = method;
 options.showResult = showResult; 

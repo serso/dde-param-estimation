@@ -64,6 +64,5 @@ else
 end
 
 jacobianResult = createSparseMatrix(jElements);
-% display(full(jacobianResult));
 
 end

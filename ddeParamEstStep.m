@@ -1,31 +1,31 @@
 %%
-% Function estimate parameters of dde: (*) dx/dt = f (t, x(t), x(t-tau_1), ..., x(t - tau_N)),
-% where tau_1, ..., tau_n are constant time delays (which can be also estimated)
-% on grid of (t, x)
+% Function estimate parameters of dde: (*) dx/dt = f (t, x(t), x(t-τ_1), ..., x(t - τ_p)),
+% where τ_1, ..., τ_p are constant time delays (which can be also estimated)
+% on grid of (t, x) (known points)
 %
-% @param odeF - handler to function f of (*)
-% @param odeFGrad - handler to gradient of f odeF (might be [])
-% @param odeFHess - handler to hessian of f odeF (might be [])
+% @param f - handler to the function f of (*)
+% @param fg - handler to the gradient of f (might be [])
+% @param fh - handler to the hessian of f (might be [])
 % @param t - time grid
 % @param x - x grid
 % @param N - number of elements in derivative approximation grid
 % @param p - number of estimated parameters
 % @param delays - vector of delays tau (if delay is estimated - use NUMBER OF ELEMENT in parameter estimation vectors )
-% @param delayF - function for history of x in [tMin - max(tau_i), tMin]
+% @param h - function for history of x in [tMin - max(tau_i), tMin]
 % @param method - derivative approximation method
 %
 function [xResult, thetaResult, sosResult, exitflagResult, outputResult, lambdaResult, gradResult, hessResult, timeResult] = ...
-    solve ( ...
-    odeF, odeFGrad, odeFHess, ...
+    ddeParamEstStep ( ...
+    f, fg, fh, ...
     t, x, ...
     N, p, ...
-    delays, delayF, ...
+    delays, h, ...
     method, ...
-    debug, showResult, options, x0, thetaLb, thetaUb)
+    debug, showResult, options, x0, deltaT, thetaLb, thetaUb)
 
 timerId = tic;
 
-obligatoryArgs = 14;
+obligatoryArgs = 15;
 
 %% checking input arguments
 
@@ -55,15 +55,26 @@ end
 %% create constraint grid
 [tGrid, tUsed] = createGrid(t, N);
 
-%% fill H matrix and f vector for least squares function
+%% fill H matrix and g vector for least squares function
 
+% lsf = 
+% = ∑ ( y_i - x_i ) ^ 2 =
+% = ( y_1 - x_1 ) ^ 2 + ( y_2 - x_2 ) ^ 2 + ... ( y_N - x_iN ) ^ 2 = 
+% = ( y_1^2 - 2*y_1*x_1 + x_1^2 ) + ( y_2^2 - 2*y_2*x_2 + x_2^2 ) + ... + ( y_N^2 - 2*y_N*x_N + x_N^2 ) =
+% = ∑ y_i^2 - 2 * ∑ y_i*x_i + ∑ x_i^2
+% => lsf = x * H * x + g * x + c
+% where
+% H = one(N, 1)
+% g = - 2 [y_1 y_2 ... y_N ]
+% c = y^2
+%
 % array of H matrix elements, where
 % first parameter is number of row (i)
 % second is number of column (j)
 % third is value in i-th row and j-th column
 hElements = zeros (N + p, 3);
 
-f = zeros (N + p, 1);
+g = zeros (N + p, 1);
 
 j = 1;
 for i = 1 : 1 : ( N + p )
@@ -74,7 +85,7 @@ for i = 1 : 1 : ( N + p )
             % diagonal elements to 1
             [hElements, ~] = addSparseElement(hElements, i, i, i, 1);
             
-            f(i) = - 2 * x(j);
+            g(i) = - 2 * x(j);
             
             % we need to iterate through the indeces which were used in
             % tGrid
@@ -95,98 +106,107 @@ H = createSparseMatrix(hElements);
 
 if ( debug )
     display (H);
-    display (f);
+    display (g);
     display (t);
     display (tGrid);
     display (x);
 end
 
-if (strcmp(method, 'rk4') && ~isempty(odeFGrad))
+if (strcmp(method, 'rk4') && ~isempty(fg))
     warning ('ArgumentCheck:Warning', 'User-supplied gradient and hessResult are not supported for rk4! Finite differences approximation will be used instead.');
 end
 
-if ( ~isempty(odeFGrad) && ~strcmp(method, 'rk4') )
-    options = optimset (options, 'GradConstr','on');
+if ( ~isempty(fg) && ~strcmp(method, 'rk4') )
+    options.optOptions = optimset (options.optOptions, 'GradConstr','on');
 else
-    options = optimset (options, 'GradConstr','off');
+    options.optOptions = optimset (options.optOptions, 'GradConstr','off');
 end
 
-function lResult = hessianF (xArg, lambdaArg)
-    lResult = hessian(xArg, lambdaArg.eqnonlin, H, odeFHess, tGrid, N, p, method, delays, delayF);
+function lResult = hessianF (x_k, lm_k)
+    lResult = hessian(x_k, lm_k.eqnonlin, H, fh, tGrid, N, p, method, delays, h);
 end
 
-if ( ~isempty(odeFHess) && ~strcmp(method, 'rk4') )
-    options = optimset (options, 'Hessian','user-supplied', 'HessFcn', @hessianF);
+if ( ~isempty(fh) && ~strcmp(method, 'rk4') )
+    options.optOptions = optimset (options.optOptions, 'Hessian','user-supplied', 'HessFcn', @hessianF);
 else
-    options = optimset (options, 'Hessian','off');
+    options.optOptions = optimset (options.optOptions, 'Hessian','off');
 end
 
-options = optimset(options, 'GradObj', 'on');
+options.optOptions = optimset(options.optOptions, 'GradObj', 'on');
 
 %% least squares function
 
 % just to avoid calculations inside fmincon
 xConst = x' * x;
+H_by_2 = 2 * H;
 
-    function [lsfResult, lsfGradResult, lsfHessResult] = lsf ( x )
-        H_2 = 2 * H;
-        lsfResult = x' * H * x + f' * x + xConst;
-        lsfGradResult = (x' * H_2)' + f;
-        lsfHessResult = H_2;
+    function [lsf_, lsfg, lsfh] = lsf ( x )
+        lsf_ = x' * H * x + g' * x + xConst;
+        lsfg = H_by_2 * x + g;
+        lsfh = H_by_2;
     end
 
-    function lsfGradResult = lsfLagrangianGrad (x, lambda)
-        Ad =  sqpConstraintsJacobian(tGrid, x, N, p, odeFGrad, method, delays, delayF);
-        [~, lsfGradResult] = lsf(x);
-        lsfGradResult = lsfGradResult + (lambda' * Ad)';
+    function cej_ = cej(x)
+        [~, ~, ~, cej_] = constraints([], fg, tGrid, x, N, p, delays, h, method);
     end
 
-    function lsfHessResult = lsfLagrangianHess (x, lambda)
-        [~, ~, lsfHessResult] = lsf(x);
-        lsfHessResult = lsfHessResult + hessian(x, lambda, H, odeFHess, tGrid, N, p, method, delays, delayF);
+    function lsfh = lsf_lh (x, lm_k)
+        if ( strcmp(options.hessian_method, 'newton') )
+            lsfh = H_by_2 + hessian(x, lm_k, H, fh, tGrid, N, p, method, delays, h);
+        elseif ( strcmp(options.hessian_method, 'gauss-newton') )
+            lsfh = H_by_2;
+        else
+            throw (MException ('ArgumentCheck:IllegalArgument', 'Unsupported method!'));
+        end
     end
 
-    function xResult = sqpConstraints (x)
-        [~, xResult] = constraints(odeF, [], [], x, tGrid, N, p, delays, delayF, method);
+    function ce_ = ce (x) 
+        [~, ce_] = constraints(f, [], tGrid, x, N, p, delays, h, method);
     end
+
+    function [ci, ce, cij, cej] = constraints0 (x) 
+        [ci, ce, cij, cej] = constraints(f, fg, tGrid, x, N, p, delays, h, method);
+        cej = cej';
+    end
+
 
 %% solving the task
 
-fminconTimerId = tic;
-
-[solution, sosResult, exitflagResult, outputResult, lambdaResult, gradResult, hessResult] = ...
-    fmincon( ...
-    @(xArg)lsf(xArg), ...
-    x0, [], [], [], [], ...
-    lb, ub, ...
-    @(xArg)constraints(odeF, odeFGrad, [], xArg, tGrid, N, p, delays, delayF, method), ...
-    options);
-
-fminconTimeResult = toc(fminconTimerId);
-
-sqpOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 3000);
-sqpOptions = optimset(sqpOptions, 'DerivativeCheck', 'off');
-sqpOptions = optimset(sqpOptions, 'FinDiffType', 'central');
-sqpOptions = optimset(sqpOptions, 'TolFun', 1e-2);
-sqpOptions = optimset(sqpOptions, 'TolCon', 1e-2);
-sqpOptions = optimset(sqpOptions, 'TolX', 1e-2);
-
 % sqpTimerId = tic;
-% 
-% [sqpSolution] = sqp(    ...
-%     N + p, N - 1, ...
-%     @(xArg)lsf(xArg), ...
-%     @(xArg, lambda)lsfLagrangianGrad(xArg, lambda), ...
-%     @(xArg, lambda)lsfLagrangianHess(xArg, lambda), ...
-%     @(xArg)sqpConstraints(xArg), ...
-%     @(xArg)sqpConstraintsJacobian(tGrid, xArg, N, p, odeFGrad, method, delays, delayF), ...
-%     x0, ...
-%     sqpOptions, ...
-%     debug, ...
-%     lb, ub);
-% 
+
+if ( options.sqp )
+      
+    [solution, lambdaResult, iterations, funCount] = sqp(    ...
+        N + p, N - 1, ...
+        @(x_k)lsf(x_k), ...
+        @(x_k, lm_k)lsf_lh(x_k, lm_k), ...
+        @(x_k)ce(x_k), ...
+        @(x_k)cej(x_k), ...
+        x0, ...
+        options.sqpOptions, ...
+        debug, ...
+        lb, ub);
+    
+    sosResult = lsf(solution);
+    exitflagResult = 1;
+    outputResult = struct('iterations', iterations, 'funcCount', funCount);
+    gradResult = 1;
+    hessResult = 1;
+    
+else
+    
+    [solution, sosResult, exitflagResult, outputResult, lambdaResult, gradResult, hessResult] = ...
+        fmincon( ...
+        @(x_k)lsf(x_k), ...
+        x0, [], [], [], [], ...
+        lb, ub, ...
+        @(x_k)constraints0(x_k), ...
+        options.optOptions);
+    
+end
+
 % sqpTimeResult = toc(sqpTimerId);
-% 
+
 % thetaResult = solution( N + 1 : N + p );
 % sqpThetaResult = sqpSolution( N + 1 : N + p );
 % 

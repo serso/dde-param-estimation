@@ -69,7 +69,7 @@ for i = 1: 1: N
         hrow (MException ('ArgumentCheck:IllegalArgument', 'Delay function returned NaN!'));
     end
     
-    xWithErrors(i, 1) =  x(i, 1) + xSigmaError * randn(1);
+    xWithErrors(i, 1) =  x(i, 1) + xSigmaError * randn(1) * x(i, 1);
 end
 
 end

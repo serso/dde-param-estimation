@@ -1,4 +1,9 @@
-function [xResult, xStepsResult, timeResult] = sqp (N, lambdaN, fun, grad, hess, c, jc, x0, options, debug, lb, ub)
+function [xResult, lambdaResult, iterations, funCount, timeResult] = sqp ( N, cn, f, lh, ce, cej, x0, options, debug, lb, ub)
+
+%
+% [xResult, lambdaResult, iterations, funCount, xStepsResult, timeResult] = sqp (N, cn, f, l_grad, lh, ce, cej, x0, options,
+% debug, lb, ub);
+%
 
 timerId = tic();
 
@@ -8,11 +13,7 @@ elseif ( N <= 0 )
     throw (MException ('ArgumentCheck:OutOfRange', 'N is less than 1.'));
 end
 
-if ( isempty(grad) )
-    throw (MException ('ArgumentCheck:NotSet', 'Gradient must be set.'));
-end
-
-if ( isempty(hess) )
+if ( isempty(lh) )
     throw (MException ('ArgumentCheck:NotSet', 'Hessian must be set.'));
 end
 
@@ -22,76 +23,58 @@ elseif ( length(x0) ~= N )
     throw (MException ('ArgumentCheck:illegalArgument', 'x0 length is not equal to N.'));
 end
 
-% if ( isempty(lb) )
-%     lb = -Inf * ones ( N, 1 );
-% end
-% 
-% if ( isempty(ub) )
-%     ub = Inf * ones ( N, 1 );
-% end
+iterations = 0;
+funCount = 0;
 
-maxNumberOfIterations = 5;
-tolX = 10^-2;
-
-xResult = x0;
-
-    function [sResult] = direction ( s, x, lambda, hessMatrix )
-        sResult = grad(x, lambda)' * s + s' * hessMatrix * s / 2;
-    end
-
-    function [cResult, ceqResult] = directionConstraints ( s, x )
-        cResult = [];
-        if ( ~isempty(c) && ~isempty(jc) )
-            ceqResult = c(x) + jc(x) * s;
+    function [outdic, out1, out2, out3, out4, out5, out6, out7  ] = dde_simul ( indic, x, lm )
+        
+        out1 = [];
+        out2 = [];
+        out3 = [];
+        out4 = [];
+        out5 = [];
+        out6 = [];
+        out7 = [];
+        
+        % timerId = tic();
+        
+        % display(indic);
+        
+        if indic <= 1
+            outdic = 0;
+            iterations = iterations + 1;
+        elseif indic == 2
+            % f,ci,ce,cs,g,ai,cej
+            outdic = 0;
+            out1 = f(x);
+            funCount = funCount + 1;
+            out3 = ce(x);
+        elseif indic == 3
+            % f,ci,ce,cs,g,ai,cej
+            outdic = 0;
+            funCount = funCount + 1;
+            [~, out5] = f(x);
+            out7 = cej(x);
+        elseif indic == 4
+            % f,ci,ce,cs,g,ai,cej
+            outdic = 0;
+            
+            funCount = funCount + 1;
+            [out1, out5] = f(x);
+            out3 = ce(x);
+            out7 = cej(x);
+        elseif indic == 5
+            outdic = 0;
+            out1 = lh(x, lm);
         else
-            ceqResult = [];
+            outdic = -2;
         end
+        
+        %time = toc(timerId);
+        %display(sprintf('indic %i %0.5f s', indic, time));
     end
 
-for algorithmIteration = 1:2147483647
-    
-    sLb = lb - xResult;
-    sUb = ub - xResult;
-
-    %sLb = -deltaS * ones(N, 1);
-    %sUb = deltaS * ones(N, 1);
-    
-    [~, funGrad] = fun(xResult);
-    Ad = jc(xResult);
-    lambda = - ( Ad * Ad' ) \ ( Ad * funGrad );
-    
-    hessMatrix = hess(xResult, lambda);
-    
-    %% solving the task
-    [sResult] = ...
-        fmincon( ...
-        ...% minimized function
-        @(sArg)direction(sArg, xResult, lambda, hessMatrix), ...
-        ...% x0
-        zeros(N, 1), ...
-        ...% A, b (A * x <= b)
-        [], [], ...
-        ...% Aeq, beq (Aeq * x = beq)
-        [], [], ...
-        ...% lb, ub (lb <= x < ub)
-        sLb, sUb, ...
-        @(sArg)directionConstraints(sArg, xResult), ...
-        options);
-    
-    xStepsResult(algorithmIteration, 1:N) = xResult';
-    xResult = xResult + sResult;
-    
-    if ( debug )
-        display(sprintf('Iteration: %i', algorithmIteration));
-        display(xStepsResult);
-    end
-    
-    if ( algorithmIteration >= maxNumberOfIterations || norm(sResult, inf) < tolX )
-        xStepsResult(algorithmIteration + 1, 1:N) = xResult';
-        break;
-    end
-    
-end
+[xResult,lambdaResult,~] = sqplab(@dde_simul, x0, zeros(N + cn, 1), lb, ub, options);
 
 timeResult = toc(timerId);
 

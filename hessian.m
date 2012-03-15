@@ -1,7 +1,7 @@
 % hessian of lagrangian for fmincon
 
-%lambda.eqnonlin
-function [lResult] = hessian ( x, lambda, H, odeFHess, t, N, p, method, delays, delayF )
+%lm.eqnonlin
+function [lResult] = hessian ( x, lm, H, odeFHess, t, N, p, method, delays, delayF )
 
 lResult = 2 * H;
 
@@ -11,14 +11,14 @@ if ( strcmp(method, 'euler') )
     
     for k = 1:1:(N-1)
         out = deal(odeFHess(getDelayedX(x, t, k, getDelays(delays, theta), delayF), t(k), theta));
-        lResult(k, k) = lResult(k, k) - lambda(k) * delta(t, k ) * out(1, 1);
+        lResult(k, k) = lResult(k, k) - lm(k) * delta(t, k ) * out(1, 1);
     end
     
 elseif ( strcmp(method, 'backward_euler') )
     
     for k = 2:1:N
         out = deal(odeFHess(getDelayedX(x, t, k, getDelays(delays, theta), delayF), t(k), theta));
-        lResult(k, k) = lResult(k, k) - lambda(k - 1) * delta(t, k - 1 ) * out(1, 1);
+        lResult(k, k) = lResult(k, k) - lm(k - 1) * delta(t, k - 1 ) * out(1, 1);
     end
     
 elseif (strcmp(method, 'box'))
@@ -35,7 +35,7 @@ elseif (strcmp(method, 'box'))
                 deltaT = ( deltaT + delta(t, k - 2 )) / 2;
             end
             
-            val = - lambda(k - 1) * deltaT * out(1, 1);
+            val = - lm(k - 1) * deltaT * out(1, 1);
             lResult(k, k) = lResult(k, k) + val;
             lResult(k, k - 1) = lResult(k, k - 1) + val;
             lResult(k - 1, k) = lResult(k - 1, k) + val;
@@ -51,7 +51,7 @@ elseif (strcmp(method, 'box'))
             if (k < N - 1)
                 deltaT = ( deltaT + delta(t, k + 1 )) / 2;
             end
-            val = - lambda(k) * deltaT * out(1, 1);
+            val = - lm(k) * deltaT * out(1, 1);
             lResult(k, k) = lResult(k, k) + val;
             lResult(k, k + 1) = lResult(k, k + 1) + val;
             lResult(k + 1, k) = lResult(k + 1, k) + val;
@@ -69,7 +69,7 @@ for k = (N+1):1:(N+p)
         kl = 0;
         for index = 1:1:(N-1)
             out = deal(odeFHess(getDelayedX(x, t, index, getDelays(delays, theta), delayF), t(index), theta));
-            kl = kl - lambda(index) * delta(t, index ) * out(k-N, l-N);
+            kl = kl - lm(index) * delta(t, index ) * out(k-N, l-N);
         end
         lResult(k, l) = lResult(k, l) + kl;
     end

@@ -12,26 +12,29 @@ eps = 0.0000001;
 tMin = t(1);
 tMax = t(length(t));
 
+% check if first element is less than last element
 if ( tMax <= tMin )
     throw (MException ('ArgumentCheck:OutOfRange', 'tMax has to be more than tMin'));
 end
 
+% create uniformly distributed t grid with N elements
 tGrid = tMin : ( tMax - tMin ) / ( N - 1 ) : tMax;
-tResult = zeros(N, 1);
 
+% prepare result values
+tResult = zeros(N, 1);
 tUsedResult = zeros(N, 1);
 
 % index for t array
 tIndex = 1;
 
-%index for result array
+% index for result array
 i = 1;
 
 for tPos = tGrid
     
     if ( t(tIndex) < tPos + eps)
-        tUsedResult(i) = 1;
         
+        tUsedResult(i) = 1;
         tResult(i) = t(tIndex);
         tIndex = tIndex + 1;
         
@@ -39,7 +42,10 @@ for tPos = tGrid
             
             warning ('ArgumentCheck:IllegalArgument', 'More that one element found in one step. Increase number of elements of grid (N) to prevent this warning!');
             
+            % we need to skip ALL elements of t array which belong to
+            % current step
             while (tIndex <= length(t) && t(tIndex) <= tPos)
+                % next element in still in current step => increase indices
                 tUsedResult(i) = tUsedResult(i) + 1;
                 tIndex = tIndex + 1;
             end

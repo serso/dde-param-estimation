@@ -1,181 +1,221 @@
-% Prepares constraints
+function [ci, ce, cij, cej] = constraints ( ... 
+    f, fg,      ...
+    t, x,       ...
+    N, p,       ...
+    delays, h,  ... 
+    method)
+%CONSTRAINTS calculates constraints in point x for the DDE parameters
+%estimation problem: (*) dx/dt = f (t, x(t), x(t-τ_1), ..., x(t - τ_N))
 %
-% @param derivative - handle to derivative function ( =f(x, t, theta) )
-% @param x - x point
-% @param t - t point
-% @param N - dimension of x (without theta)
-% @params p - dimension of parameter theta
-% @params method - ethod for which constaints are created
+%   [ci, ce, cij, cej] = CONSTRAINTS(f, fg, hess, x, t, N, p, delays, h, method) calculates next values:
+%   ci  vector of inequalities calculated in the point (t, x)
+%   ce  vector of equalitites calculated in the point (t, x)
+%   cij jacobian matrix of inequalities in the point (t, x)
+%   cej jacobian matrix of equalities in the point (t, x)
 %
-% @return cResult - vector of inequalities calculated at the point (x, t)
-% @return ceqResult - vector of equalitites calculated at the point (x, t)
+% @param f - handler to the function f of (*)
+% @param fg - handler to the gradient of f (might be [])
+% @param t - time grid
+% @param x - x grid
+% @param N - number of elements in integration grid
+% @param p - number of estimated parameters
+% @param delays - vector of delays tau (if delay is estimated - use NUMBER OF ELEMENT in parameter estimation vectors )
+% @param h - function for history of x in [tMin - max(τ_i), tMin]
+% @param method - derivative approximation method
 %
-function [cResult, ceqResult, cDerivativeResult, ceqDerivativeResult, cHessResult, ceqHessResult] = constraints (f, grad, hess, x, t, N, p, delays, delayF, method)
 
+%% prepare initial parameters
+
+% extract theta
 theta = x ( N + 1 : N + p );
+
+% if no f handler is provided => no need for calculations of ce => set empty
+if (~isempty(f))
+    % allocate ce array
+    ce = zeros (N - 1, 1);
+else
+    ce = [];
+end
+
+% prevailing index for cej
+cej_i = 1;
+
+
+% if no fg handler is provided => no need for calculations of cej => set
+% empty
+if ( ~isempty(fg) )
+    % count total value of non zero element to effectively allocate memory
+    delayIndeces = getDelayIndeces(t, delays, theta);
+    
+    delayElements = 0;
+    for delayIndex = delayIndeces
+        if (delayIndex > 1)
+            % NOTE: diagonal is already counted in the code below
+            
+            % each delay has a sub diagonal => number of not zero elements
+            % can be retrieved by the next formula
+            if ( strcmp(method, 'euler') )
+                delayElements = delayElements + (N - delayIndex - 1);
+            elseif (strcmp(method, 'backward_euler'))
+                if ( delayIndex == 2 ) 
+                    display(delayIndex)
+                    throw (MException ('ArgumentCheck:IllegalArgument', 'Check!'));
+                end
+                
+                delayElements = delayElements + (N - (delayIndex + 1) - 1);
+            elseif (strcmp(method, 'box'))
+                delayElements = delayElements + (N - delayIndex - 1);
+            else
+                throw (MException ('ArgumentCheck:IllegalArgument', 'Unsupported method!'));
+            end            
+        end
+    end
+    
+    % allocating memory
+    cejArray = zeros(2 * (N - 1) + p * (N - 1) + delayElements, 3);
+else
+    cej = [];
+end
+
+%% creates output matrices
 
 if ( strcmp(method, 'euler') )
     
-    ceq = zeros (N - 1, 1);
-    
-    ceqElementI = 1;
-    if ( ~isempty(grad) )
-        ceqElements = zeros(2 * (N - 1) + p * (N - 1), 3);
-    else
-        ceqDerivative = [];
-    end
-    
-    if ( ~isempty(hess) )
-        ceqHess = zeros(N + p, N -1);
-    else
-        ceqHess = [];
-    end
-    
     for i = 1:1:(N - 1)
         
-        delayedX = getDelayedX(x, t, i, getDelays(delays, theta), delayF);
+        delayedX = getDelayedX(x, t, i, getDelays(delays, theta), h);
         
-        ceq(i) = - x(i) + x(i + 1) - delta(t, i) * f(delayedX, t(i), theta);
+        if ( ~isempty(f) )
+            ce(i) = - x(i) + x(i + 1) - delta(t, i) * f(delayedX, t(i), theta);
+        end
         
-        if ( ~isempty(grad) )
-            [xDerivative, thetaDerivative] = getDerivatives(grad(delayedX, t(i), theta), 1, p);
+        if ( ~isempty(fg) )
             
-            for j = 1:1:N
-                if ( j == i )
-                    [ceqElements, ceqElementI] = addSparseElement(ceqElements, ceqElementI, j, i, (- 1 - delta(t, i) * xDerivative));
-                elseif ( j == i + 1)
-                    [ceqElements, ceqElementI] = addSparseElement(ceqElements, ceqElementI, j, i, 1);
-                end
-            end
+            [xd, thetad] = getDerivatives(fg(delayedX, t(i), theta), 1, p);
+            
+            [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, i, (- 1 - delta(t, i) * xd));
+            [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, i+1, 1);
             
             for j = (N+1):1:(N+p)
-                [ceqElements, ceqElementI] = addSparseElement(ceqElements, ceqElementI, j, i, (- delta(t, i) * thetaDerivative(j - N)));
+                [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, j, (- delta(t, i) * thetad(j - N)));
+            end
+            
+            for delayIndex = delayIndeces
+                if delayIndex > 1
+                    % todo serso: check if col is correct
+                    col = i - delayIndex;
+                    if ( col > 0 )
+                        [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, col, - delta(t, i) * xd);
+                    end
+                end
             end
         end
         
         
     end
     
-    if ( ~isempty(grad) )
-        ceqDerivative = createSparseMatrix(ceqElements);
+    if ( ~isempty(fg) )
+        cej = createSparseMatrix(cejArray);
     end
     
 elseif (strcmp(method, 'backward_euler'))
     
-    ceq = zeros (N - 1, 1);
-    
-    ceqElementI = 1;
-    if ( ~isempty(grad) )
-        ceqElements = zeros(2 * (N - 1) + p * (N - 1), 3);
-    else
-        ceqDerivative = [];
-    end
-    
-    if ( ~isempty(hess) )
-        ceqHess = zeros(N + p, N -1);
-    else
-        ceqHess = [];
-    end
-    
     for i = 1:1:(N - 1)
-        delayedX = getDelayedX(x, t, i + 1, getDelays(delays, theta), delayF);
         
-        ceq(i) = - x(i) + x(i + 1) - delta(t, i) * f ( delayedX, t ( i + 1), theta );
+        delayedX = getDelayedX(x, t, i + 1, getDelays(delays, theta), h);
         
-        if ( ~isempty(grad) )
-            [xDerivative, thetaDerivative] = getDerivatives(grad(delayedX, t(i + 1), theta), 1, p);
+        if ( ~isempty(f) )
+            ce(i) = - x(i) + x(i + 1) - delta(t, i) * f ( delayedX, t ( i + 1), theta );
+        end;
+        
+        if ( ~isempty(fg) )
+            [xd, thetad] = getDerivatives(fg(delayedX, t(i + 1), theta), 1, p);
             
-            for j = 1:1:N
-                if ( j == i )
-                    [ceqElements, ceqElementI] = addSparseElement(ceqElements, ceqElementI, j, i, -1 );
-                elseif ( j == i + 1)
-                    [ceqElements, ceqElementI] = addSparseElement(ceqElements, ceqElementI, j, i, (1 - delta(t, i) * xDerivative) );
-                end
-            end
+            [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, i, -1 );
+            [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, i+1, (1 - delta(t, i) * xd) );
             
             for j = (N+1):1:(N+p)
-                [ceqElements, ceqElementI] = addSparseElement(ceqElements, ceqElementI, j, i, (- delta(t, i) * thetaDerivative(j - N)) );
+                [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, j, (- delta(t, i) * thetad(j - N)) );
             end
-        end
-        
-        if ( ~isempty(hess) )
+            
+            for delayIndex = delayIndeces
+                if delayIndex > 1
+                    % todo serso: check if col is correct (another variants: col = i - delayIndex + 1)
+                    col = i - delayIndex + 1;
+                    if ( col > 0 )
+                        [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, col, - delta(t, i) * xd);
+                    end
+                end
+            end
         end
         
     end
     
-    if ( ~isempty(grad) )
-        ceqDerivative = createSparseMatrix(ceqElements);
+    if ( ~isempty(fg) )
+        cej = createSparseMatrix(cejArray);
     end
     
 elseif (strcmp(method, 'box'))
     
-    ceq = zeros (N - 1, 1);
-    
-    ceqElementI = 1;
-    if ( ~isempty(grad) )
-        ceqElements = zeros(2 * (N - 1) + p * (N - 1), 3);
-    else
-        ceqDerivative = [];
-    end
-    
-    if ( ~isempty(hess) )
-        ceqHess = zeros(N + p, N -1);
-    else
-        ceqHess = [];
-    end
-    
     for i = 1:1:(N - 1)
-        delayedX_i = getDelayedX(x, t, i, getDelays(delays, theta), delayF);
-        delayedX_i_1 = getDelayedX(x, t, i + 1, getDelays(delays, theta), delayF);
+        delayedX_i = getDelayedX(x, t, i, getDelays(delays, theta), h);
+        delayedX_i_1 = getDelayedX(x, t, i + 1, getDelays(delays, theta), h);
         delayedX = (delayedX_i + delayedX_i_1) / 2;
         
         
-        deltaT = delta(t, i);
-        if ( i > 1 )
-            deltaT =  ( deltaT + delta(t, i - 1))/2;
-        end
-        ti = t(i) + delta(t, i)/2;
-        ceq(i) = - x(i) + x(i + 1) - deltaT * f ( delayedX, ti, theta );
+%         if ( i > 1 )
+%             deltaT =  ( deltaT + delta(t, i - 1))/2;
+%         else
+            deltaT = delta(t, i);
+%         end
+        ti = t(i) + (t(i+1) - t(i)) / 2;
         
-        if ( ~isempty(grad) )
-            [xDerivative, thetaDerivative] = getDerivatives(grad(delayedX, ti, theta), 1, p);
+        if ( ~isempty(f) )
+            ce(i) = - x(i) + x(i + 1) - deltaT * f ( delayedX, ti, theta );
+        end
+        
+        if ( ~isempty(fg) )
+            [xd, thetad] = getDerivatives(fg(delayedX, ti, theta), 1, p);
             
-            for j = 1:1:N
-                if ( j == i )
-                    [ceqElements, ceqElementI] = addSparseElement(ceqElements, ceqElementI, j, i, ( - 1 - deltaT * xDerivative) );
-                elseif ( j == i + 1)
-                    [ceqElements, ceqElementI] = addSparseElement(ceqElements, ceqElementI, j, i, (1 - deltaT * xDerivative) );
-                end
-            end
+            [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, i, ( - 1 - deltaT * xd / 2) );
+            [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, i+1, (1 - deltaT * xd / 2) );
             
             for j = (N+1):1:(N+p)
-                [ceqElements, ceqElementI] = addSparseElement(ceqElements, ceqElementI, j, i, (- deltaT * thetaDerivative(j - N)) );
+                [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, j, (- deltaT * thetad(j - N)) );
             end
-        end
-        
-        if ( ~isempty(hess) )
+            
+            for delayIndex = delayIndeces
+                if delayIndex > 1
+                    % todo serso: check if col is correct (another variants: col = i - delayIndex + 1)
+                    col = i - delayIndex;
+                    if ( col > 0 )
+                        [cejArray, cej_i] = addSparseElement(cejArray, cej_i, i, col, - delta(t, i) * xd / 2);
+                    end
+                end
+            end
         end
         
     end
     
-    if ( ~isempty(grad) )
-        ceqDerivative = createSparseMatrix(ceqElements);
+    if ( ~isempty(fg) )
+        cej = createSparseMatrix(cejArray);
     end
     
 elseif (strcmp(method, 'rk4'))
     
-    ceq = zeros (N - 1, 1);
-    ceqDerivative = [];
+    cej = [];
     
     for i = 1:1:(N - 1)
-        delayedX = getDelayedX(x, t, i, getDelays(delays, theta), delayF);
+        delayedX = getDelayedX(x, t, i, getDelays(delays, theta), h);
         
-        K1 = f(delayedX, t(i), theta);
-        K2 = f(delayedX + delta(t, i) * K1 / 2, t(i) + delta(t, i) / 2, theta);
-        K3 = f(delayedX + delta(t, i) * K2 / 2, t(i) + delta(t, i) / 2, theta);
-        K4 = f(delayedX + delta(t, i) * K3, t(i) + delta(t, i), theta);
-        
-        ceq(i) = - x(i) + x(i + 1) - delta(t, i) * ( K1 + 2 * K2 + 2 * K3 + K4 ) / 6 ;
+        if ( ~isempty(f) )
+            K1 = f(delayedX, t(i), theta);
+            K2 = f(delayedX + delta(t, i) * K1 / 2, t(i) + delta(t, i) / 2, theta);
+            K3 = f(delayedX + delta(t, i) * K2 / 2, t(i) + delta(t, i) / 2, theta);
+            K4 = f(delayedX + delta(t, i) * K3, t(i) + delta(t, i), theta);
+            
+            ce(i) = - x(i) + x(i + 1) - delta(t, i) * ( K1 + 2 * K2 + 2 * K3 + K4 ) / 6 ;
+        end;
     end
     
 else
@@ -183,13 +223,11 @@ else
 end
 
 % no inequlity constraints
-cResult = [];
-cDerivativeResult = [];
-cHessResult =[];
+ci = [];
+cij = [];
 
-ceqResult = ceq;
-ceqDerivativeResult = ceqDerivative;
-ceqHessResult = ceqHess;
-
+if ( ~isempty(cej) )
+  %  spy(cej);
+end
 
 end

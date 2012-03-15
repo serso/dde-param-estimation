@@ -1,15 +1,73 @@
-function [x, xResult, thetaResult, sumOfSquares] = solveInManyIterations1( ...
-    taskName, ...
+function [x, xResult, thetaResult, sumOfSquares, time] = ddeParamEst( ...
     t, x, ...
-    f, gradF, hessF, ...
+    f, fg, fh, ...
     delays, delayF, maxDelay, ...
-    method, options, p, ...
-    debug, showResult, showIntermidiateResult, thetaLb, thetaUb, x0, theta0)
+    options, p, ...
+    thetaLb, thetaUb,theta0, deltaT)
+
+addPath('./sqp/src');
+addPath('./reduce');
 
 timerId = tic;
 
+% setting default options parameters 
+if ( ~isfield(options, 'debug') )     
+    options.debug = false;
+end
+
+if ( ~isfield(options, 'showResult') )     
+    options.showResult = false;
+end
+
+if ( ~isfield(options, 'showIntermidiateResult') )     
+    options.showIntermidiateResult = false;
+end
+
+if( ~isfield(options, 'method') )
+    options.method = 'backward_euler';
+end
+
+
+if ( ~isfield(options, 'sqp') )     
+    options.sqp = false;
+end    
+
+if ( ~isfield(options, 'xTol') )     
+    options.xTol = 10^-2;
+end    
+
+if ( ~isfield(options, 'thetaTol') )     
+    options.thetaTol = 10^-2;
+end    
+
+
+if ( ~isfield(options, 'maxNumberOfIterations') )     
+    options.maxNumberOfIterations = 10;
+end    
+
+if ( options.sqp )
+    if ( ~isfield(options, 'sqpOptions') )
+        sqpOptions.algo_method        = 'Newton';
+        sqpOptions.algo_globalization = 'line-search';
+        sqpOptions.stepMethod = 'default';
+        options.sqpOptions = sqpOptions;
+    end
+    
+    if ( ~isfield(options.sqpOptions, 'algo_method'))
+        options.sqpOptions.algo_method        = 'Newton';
+    end
+    
+    if ( ~isfield(options.sqpOptions, 'algo_globalization'))
+        options.sqpOptions.algo_globalization        = 'line-search';
+    end
+    
+    if ( ~isfield(options.sqpOptions, 'stepMethod') ) 
+        options.stepMethod = 'default';
+    end
+end
+
 % setting default values for not obligatory arguments
-obligatoryArgs = 15;
+obligatoryArgs = 10;
 
 if ( nargin <= obligatoryArgs || isempty(thetaLb) )
     thetaLb = -Inf * ones (p, 1);
@@ -19,23 +77,29 @@ if (nargin <= obligatoryArgs + 1 || isempty(thetaUb))
     thetaUb = Inf * ones(p, 1);
 end
 
-if (nargin <= obligatoryArgs + 2 || isempty(x0))
-    x0 = 0;
+if (nargin <= obligatoryArgs + 2 || isempty(theta0))
+    theta0 = zeros(p, 1);
 end
 
-if (nargin <= obligatoryArgs + 3 || isempty(theta0))
-    theta0 = 0;
+if (nargin <= obligatoryArgs + 3 || isempty(deltaT))
+    
+    deltaT = Inf;
+   
+    for i = 1: 1: size(t, 1)
+        if ( i > 1 )
+            delta = t(i, 1) - t(i - 1, 1);
+            if ( delta < deltaT )
+                deltaT = delta;
+            end           
+        end
+    end
+    
 end
 
-if ( debug || showResult )
-    display(strcat('Solving task: ', taskName));
-    display(strcat('ODE parameter estimation: ', method));
+if ( options.debug || options.showResult )
+    display(strcat('Solving task: ', options.taskName));
+    display(strcat('ODE parameter estimation: ', options.method));
 end
-
-% best candidates for function arguments
-xTol = 10^-2;
-thetaTol = 10^-2;
-maxNumberOfIterations = 1;
 
 % create delay function (is not exists)
 
@@ -44,7 +108,7 @@ maxNumberOfIterations = 1;
 % +1 has to guarantees that there would not be elements on the bounds
 approximationN = ceil( (max(t) - min(t)) / minTDist ) + 1;
 
-if ( debug )
+if ( options.debug )
     display(x);
     display(t);
 end
@@ -78,8 +142,8 @@ xResult = [];
 sumOfSquares = [];
 
 for i = 1:2147483647
-    
-    if ( showIntermidiateResult )
+            
+    if ( options.showIntermidiateResult )
         display('Start iteration of algorithm!');
         display(sprintf('Iteration number: %i', i));
         display(sprintf('Number of elements in grid: %i', approximationN));
@@ -89,13 +153,14 @@ for i = 1:2147483647
     NGrid(i) = approximationN;
     
     [xResult, thetaResult, sumOfSquares, ~, output, ~, ~, ~, timeResult] = ...
-        solve ( ...
+        ddeParamEstStep ( ...
         f, ...
-        gradF, ...
-        hessF, ...
+        fg, ...
+        fh, ...
         t, x, approximationN, ...
-        p, delays, delayF, method, debug, ...
-        showIntermidiateResult, options, x0, ...
+        p, delays, delayF, options.method, options.debug, ...
+        options.showIntermidiateResult, options, x0, ...
+        deltaT, ...
         thetaLb, thetaUb);
 %     
 %     absoluteThetaErrors(i) = norm ( theta - thetaResult, inf );
@@ -104,7 +169,7 @@ for i = 1:2147483647
     funCounts(i) = output.funcCount;
     times(i) = timeResult;
     
-    if ( showIntermidiateResult )
+    if ( options.showIntermidiateResult )
         display('Iteration ended!');
         display(sprintf('Iteration number: %i', i));
         display(output);
@@ -134,34 +199,35 @@ for i = 1:2147483647
     % setting additional initial parameter for theta
     x0(approximationN + 1 : approximationN + p) = thetaResult;
     
-    if ( i >= maxNumberOfIterations || ...
-            xDiffs(i) < xTol || ...
-            thetaDiffs(i) < thetaTol )
+    if ( i >= options.maxNumberOfIterations || ...
+            (xDiffs(i) < options.xTol && thetaDiffs(i) < options.thetaTol ))
         % time to stop
         break;
     end
     
 end
 
-if ( showResult && ~showIntermidiateResult )
+if ( options.showResult && ~options.showIntermidiateResult )
     if (~isempty(xResult))
         figure('Position', [1, 1, 1024, 600]);
         grid on;
         hold on;
-        %title(sprintf('Task: %s\nMethod: %s\nApproximation grid: %i\nTime: %0.3f s', taskName, method, approximationN, toc(timerId)));
-        %title(sprintf('Task: %s', taskName));
+        %title(sprintf('Task: %s\nMethod: %s\nApproximation grid: %i\nTime: %0.3f s', options.taskName, options.method, approximationN, toc(timerId)));
+        %title(sprintf('Task: %s', options.taskName));
         %plot (t, x, 'xr');
         h = plot (interpolate(t, length(xResult), 'spline'), xResult(1:length(xResult)), '-b');
         xlabel('t, years');
         ylabel('x, billions');
-%         saveas(h, strcat('output/', taskName, '_result'), 'png'); 
+%         saveas(h, strcat('output/', options.taskName, '_result'), 'png'); 
     end
     
     display(output);
 end
 
-if ( debug || showResult )
-    display(strcat('Results for: ', taskName));
+time = toc(timerId);
+
+if ( options.debug || options.showResult )
+    display(strcat('Results for: ', options.taskName));
     display(sprintf('Approximation grid: %i', approximationN));
     
 %     display(absoluteXErrors);
@@ -191,6 +257,6 @@ if ( debug || showResult )
 %     title('Time(N)');
 %     plot (NGrid, times, '-b');
 %     
-    display(sprintf('Time: %0.5f s', toc(timerId)));
+    display(sprintf('Time: %0.5f s', time));
 end
 end

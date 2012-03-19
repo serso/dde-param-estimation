@@ -97,8 +97,8 @@ optOptions = optimset(optOptions, 'FinDiffType', 'central');
 options.optOptions = optOptions;
 
 options.sqp = true;
-% options.hessian_method = 'gauss-newton';
-options.hessian_method = 'newton';
+options.hessian_method = 'gauss-newton';
+% options.hessian_method = 'newton';
 
 % sqpOptions.algo_method        = 'quasi-Newton';
 sqpOptions.algo_method        = 'Newton';

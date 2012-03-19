@@ -147,12 +147,15 @@ H_by_2 = 2 * H;
     end
 
     function cej_ = cej(x)
-        [~, ~, ~, cej_] = constraints([], fg, tGrid, x, N, p, delays, h, method);
+        [~, ~, ~, cej_] = constraints([], fg, [], tGrid, x, N, p, delays, h, method);
     end
 
     function lsfh = lsf_lh (x, lm_k)
         if ( strcmp(options.hessian_method, 'newton') )
-            lsfh = H_by_2 + hessian(x, lm_k, H, fh, tGrid, N, p, method, delays, h);
+            %lsfh = H_by_2 + hessian(x, lm_k, H, fh, tGrid, N, p, method, delays, h);
+            [~, ~, ~, ~, ~, ceh] = constraints([], [], fh, tGrid, x, N, p, delays, h, method, lm_k(N+p:N+N+p-1));
+            % todo serso: check the lm_k parameter
+            lsfh = H_by_2 + ceh;
         elseif ( strcmp(options.hessian_method, 'gauss-newton') )
             lsfh = H_by_2;
         else
@@ -161,11 +164,11 @@ H_by_2 = 2 * H;
     end
 
     function ce_ = ce (x) 
-        [~, ce_] = constraints(f, [], tGrid, x, N, p, delays, h, method);
+        [~, ce_] = constraints(f, [], [], tGrid, x, N, p, delays, h, method);
     end
 
     function [ci, ce, cij, cej] = constraints0 (x) 
-        [ci, ce, cij, cej] = constraints(f, fg, tGrid, x, N, p, delays, h, method);
+        [ci, ce, cij, cej] = constraints(f, fg, [], tGrid, x, N, p, delays, h, method);
         cej = cej';
     end
 

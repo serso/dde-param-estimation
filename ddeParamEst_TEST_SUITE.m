@@ -6,9 +6,6 @@ function ddeParamEst_TEST_SUITE()
 clc;
 close all;
 
-addPath('./sqp/src');
-addPath('./reduce');
-
 % %% SQP
 % 
 % optOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 3000);
@@ -82,13 +79,13 @@ clearData = true;
 % methods = {'euler' 'backward_euler' 'box' 'rk4'};
 
 % number of known points (i.e. values of function x(t))
-N = 1000;
+N = 100;
 
 xSigmaError = 0.02;
 tSigmaError = 0.0;
 
-options.xTol = 10^-4;
-options.thetaTol = 10^-4;
+options.xTol = 10^-2;
+options.thetaTol = 10^-2;
 
 % optOptions = optimset('Algorithm', 'sqp');
 optOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 6000);
@@ -100,7 +97,8 @@ optOptions = optimset(optOptions, 'FinDiffType', 'central');
 options.optOptions = optOptions;
 
 options.sqp = true;
-options.hessian_method = 'gauss-newton';
+% options.hessian_method = 'gauss-newton';
+options.hessian_method = 'newton';
 
 % sqpOptions.algo_method        = 'quasi-Newton';
 sqpOptions.algo_method        = 'Newton';
@@ -118,7 +116,7 @@ options.sqpOptions = sqpOptions;
 % options.sqpOptions = sqpOptions;
 
 %method = 'backward_euler';
-options.method = 'rk4';
+options.method = 'euler';
 
 %options.method = method;
 options.showResult = showResult; 

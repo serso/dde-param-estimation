@@ -1,9 +1,9 @@
-function [ci, ce, cij, cej] = constraints ( ... 
-    f, fg,      ...
-    t, x,       ...
-    N, p,       ...
-    delays, h,  ... 
-    method)
+function [ci, ce, cij, cej, cih, ceh] = constraints ( ... 
+    f, fg, fh,      ...
+    t, x,           ...
+    N, p,           ...
+    delays, h,      ... 
+    method, lm)
 %CONSTRAINTS calculates constraints in point x for the DDE parameters
 %estimation problem: (*) dx/dt = f (t, x(t), x(t-τ_1), ..., x(t - τ_N))
 %
@@ -12,9 +12,13 @@ function [ci, ce, cij, cej] = constraints ( ...
 %   ce  vector of equalitites calculated in the point (t, x)
 %   cij jacobian matrix of inequalities in the point (t, x)
 %   cej jacobian matrix of equalities in the point (t, x)
+%   cih hessian matrix of inequalities in the point (t, x)
+%   ceh hessian matrix of equalities in the point (t, x)
 %
-% @param f - handler to the function f of (*)
+%
+% @param f - handler to the function f of (*) (might be [])
 % @param fg - handler to the gradient of f (might be [])
+% @param fh - handler to the hessian of f (might be [])
 % @param t - time grid
 % @param x - x grid
 % @param N - number of elements in integration grid
@@ -77,6 +81,43 @@ else
     cej = [];
 end
 
+% prevailing index for ceh
+ceh_i = 1;
+
+if ( ~isempty(fh) )
+    % count total value of non zero element to effectively allocate memory
+    delayIndeces = getDelayIndeces(t, delays, theta);
+    
+    delayElements = 0;
+    for delayIndex = delayIndeces
+        if (delayIndex > 1)
+            % NOTE: diagonal is already counted in the code below
+            
+            % each delay has a sub diagonal => number of not zero elements
+            % can be retrieved by the next formula
+            if ( strcmp(method, 'euler') )
+                throw (MException ('ArgumentCheck:IllegalArgument', 'Unsupported method!'));
+            elseif (strcmp(method, 'backward_euler'))
+                throw (MException ('ArgumentCheck:IllegalArgument', 'Unsupported method!'));
+            elseif (strcmp(method, 'box'))
+                throw (MException ('ArgumentCheck:IllegalArgument', 'Unsupported method!'));
+            else
+                throw (MException ('ArgumentCheck:IllegalArgument', 'Unsupported method!'));
+            end            
+        end
+    end
+    
+    % allocating memory
+    cehArray = zeros((N - 1) + 2 * p * (N - 1) + p * p + delayElements, 3);
+    
+    if ( ~isempty(lm) )
+        lm = ones(N-1, 1);
+    end
+else
+   ceh = [];
+end
+
+
 %% creates output matrices
 
 if ( strcmp(method, 'euler') )
@@ -111,11 +152,26 @@ if ( strcmp(method, 'euler') )
             end
         end
         
+        if (~isempty(fh)) 
+            % fhi - function hessian at the point (t_i, x_i)
+            fhi = deal(fh(getDelayedX(x, t, i, getDelays(delays, theta), h), t(i), theta));
+            
+            [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, i, i, - lm(i) * delta(t, i) * fhi(1, 1)); 
+            for j = 1:p
+                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, i, N + j, - delta(t, i) * fhi(1, 1 + j));
+                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, N + j, i, - delta(t, i) * fhi(1 + j, 1));
+                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, N + j, N + j, - delta(t, i) * fhi(1 + j, 1 + j));
+            end
+        end
         
     end
     
     if ( ~isempty(fg) )
         cej = createSparseMatrix(cejArray);
+    end
+    
+    if ( ~isempty(fh) )
+        ceh = createSparseMatrix(cehArray);
     end
     
 elseif (strcmp(method, 'backward_euler'))
@@ -225,6 +281,7 @@ end
 % no inequlity constraints
 ci = [];
 cij = [];
+cih = [];
 
 if ( ~isempty(cej) )
   %  spy(cej);

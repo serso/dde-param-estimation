@@ -233,10 +233,8 @@ function [d,lmqp,info] = sqplab_step (simul,x,lm,M,lb,ub,info,options,values)
           p = options.p;
           rp = options.rp;
           
-          [L, U] = lu(M0(p,p));
-          y = L\b0(p);
-          x0p = U\y;
-          %x0p = M0(p,p) \ b0(p);
+          [L, U] = lu(M0(p,p))
+          x0p = M0(p,p) \ b0(p);
           dlmp = x0p(rp);
       else
           dlmp =  M0 \ b0;

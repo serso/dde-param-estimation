@@ -7,7 +7,7 @@ options.showResult = false;
 % ns = [100 250 500 750 1000 1250 1500 1750 2000 2500 3000 5000 ];
 
 if ( nargin < 17 || isempty(methods) )
-    methods = {'default', 'symrcm', 'amd', 'colamd', 'colperm', 'dmperm', 'symamd'};
+    methods = {'fmincon', 'default', 'symrcm', 'amd', 'colamd', 'colperm', 'dmperm', 'symamd'};
 end
 
 if ( nargin < 18 || isempty(ns) )
@@ -15,7 +15,7 @@ if ( nargin < 18 || isempty(ns) )
 end
 
 % methods = {'fmincon', 'symrcm'};
-colors = {'m', 'r', 'g', 'b', 'k', 'c', 'y'};
+colors = {'m', 'r', 'g', 'b', 'k', 'c', 'y', 'm'};
 close all;
         
 figure('Position', [1, 1, 1024, 600]);

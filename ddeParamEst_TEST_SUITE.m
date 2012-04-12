@@ -6,6 +6,9 @@ function ddeParamEst_TEST_SUITE()
 clc;
 close all;
 
+addPath('./sqp/src');
+addPath('./reduce');
+
 % %% SQP
 % 
 % optOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 3000);
@@ -157,13 +160,16 @@ ddeParamEst_TEST(...
 
 %%
 
+%{'fmincon', 'default', 'symrcm', 'amd', 'colamd', 'colperm', 'dmperm',
+%'symamd'}
+
 compareTimes(tMin, tMax, ...
     x_sol, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], {'fmincon', 'default', 'symrcm', 'amd', 'colamd', 'colperm', 'dmperm', 'symamd'}, [50 100 150 200 250 350 400 450 500 750 1000]);
+    options, theta,  xSigmaError, tSigmaError, [], [], [], {'default', 'symrcm', 'colamd', 'colperm', 'symamd'}, [50 100 150 200 250 350 400 450 500 750 1000]);
 
 %% 2
 
@@ -370,7 +376,7 @@ compareTimes(tMin, tMax, ...
     fg, ...
     fh, ...
     delays, delayF, max(delays), ...
-    options, theta, xSigmaError, tSigmaError, thetaLb, thetaUb, 0.5, {'default', 'symrcm'}, [100 200 300 400 500]);
+    options, theta, xSigmaError, tSigmaError, thetaLb, thetaUb, 0.5, {'default', 'symrcm', 'colamd', 'colperm', 'symamd'}, [100 200 300 400 500]);
 
 %% 7
 options.taskName = 'task_07';

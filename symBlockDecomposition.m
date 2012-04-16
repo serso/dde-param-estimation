@@ -33,23 +33,44 @@ function [ L, D ] = symBlockDecomposition( A, n )
 
 [rows, cols] = size(A);
 
-elements = zeros (n, 3);
-for i = 1:n
-    if ( abs(A(i, i)) > 0 )
-        [elements, ~] = addSparseElement(elements, i, i, i, 1);
-    else
-        [elements, ~] = addSparseElement(elements, i, i, i, 0);
-    end
-end
-Lb = createSparseMatrix(elements);
-D1 = 2 * speye(n);
+% elements = zeros (n, 3);
+% for i = 1:n
+%     if ( abs(A(i, i)) > 0 )
+%         [elements, ~] = addSparseElement(elements, i, i, i, 1);
+%     else
+%         [elements, ~] = addSparseElement(elements, i, i, i, 0);
+%     end
+% end
+% Lb = createSparseMatrix(elements);
+Lb = speye(n);
+D1 = 2 * Lb;
 
 %[Lb, D1, P] = ldl(A(1:n,1:n));
 %Lb = P'\Lb;
 
 V = A(1:n,n+1:cols);
-W = (Lb*D1) \ V;
-[Lc, D2, P] = ldl(- W' * D1 * W);
+W = V / 2;
+
+method = 'asym';
+
+if ( strcmp(method, 'sym') )
+    tic;
+    W0 = -W' * D1 * W;
+    toc
+    tic;
+    [Lc, D2, P] = ldl(W0);
+    toc;
+elseif (strcmp(method, 'asym'))
+    tic;
+    W_ = Lb \ W;
+    W0 = - V' * W_;
+    toc
+    tic;
+    [Lc, D2, P] = ldl(W0);
+    toc
+else   
+    throw (MException ('IllegalArgument:UnsupportedMathod', 'Unsupported method!'));
+end
 
 Lc = P' \  Lc;
 

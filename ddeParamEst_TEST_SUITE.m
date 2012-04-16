@@ -322,7 +322,7 @@ ddeParamEst_TEST(...
 
 %% 6
 
-N = 200;
+N = 20;
 options.showResult = true;
 options.taskName = 'task_06';
 

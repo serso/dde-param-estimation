@@ -76,13 +76,15 @@ addPath('./reduce');
 
 %% Parameter estimation in ODE
 
+clear;
+
 showResult = true;
 clearData = true;
 
 % methods = {'euler' 'backward_euler' 'box' 'rk4'};
 
 % number of known points (i.e. values of function x(t))
-N = 100;
+N = 1000;
 
 xSigmaError = 0.02;
 tSigmaError = 0.0;
@@ -99,7 +101,7 @@ optOptions = optimset(optOptions, 'FinDiffType', 'central');
 
 options.optOptions = optOptions;
 
-options.sqp = true;
+options.sqp = false;
 options.hessian_method = 'gauss-newton';
 % options.hessian_method = 'newton';
 
@@ -107,9 +109,13 @@ options.hessian_method = 'gauss-newton';
 sqpOptions.algo_method        = 'Newton';
 % sqpOptions.algo_globalization = 'line-search';
 % sqpOptions.algo_globalization = 'unit step-size';
-sqpOptions.stepMethod = 'symrcm';
+sqpOptions.stepMethodIterative = false;
+sqpOptions.stepMethod = 'default';
 sqpOptions.ldlsThreshold = 0.01;
 sqpOptions.algo_globalization = 'line-search';
+sqpOptions.iterativeTol = options.xTol;
+sqpOptions.iterativeMaxit = 200;
+sqpOptions.iterativePrecondAlgorithm = 'luinc';
 options.sqpOptions = sqpOptions;
 
 %     sqpOptions.tol(1)  = tolopt(1);  % tolerance on the gradient of the Lagrangian
@@ -119,7 +125,7 @@ options.sqpOptions = sqpOptions;
 % options.sqpOptions = sqpOptions;
 
 %method = 'backward_euler';
-options.method = 'euler';
+options.method = 'backward_euler';
 
 %options.method = method;
 options.showResult = showResult; 
@@ -279,8 +285,8 @@ tMax = 10;
 theta = [ 2; 1; 1; 1];
 theta0 = [ 2.1; 0.9; 0.9; 1.2];
 
-thetaLb = [ 0 0 0 0 ];
-thetaUb = [ 8 5 5 5 ];
+thetaLb = [];%[ 0 0 0 0 ];
+thetaUb = [];%[ 8 5 5 5 ];
 %p = 4;
 %thetaUb = Inf * ones(p, 1);
 %thetaLb = - thetaUb;
@@ -341,8 +347,8 @@ tMax = 10;
 %thetaLb = 0;
 %thetaUb = 4;
 p = 1;
-thetaUb = Inf * ones(p, 1);
-thetaLb = - thetaUb;
+thetaUb = [];
+thetaLb = [];
 
 x_sol = @(t) cos( theta * pi * t / ( 2 * tau));
 
@@ -426,6 +432,9 @@ ddeParamEst_TEST(...
 %% 8
 options.taskName = 'task_08';
 
+N = 5000;
+options.sqpOptions.stepMethodIterative = true;
+
 if ( clearData )
     clc;
     close all;
@@ -433,8 +442,8 @@ end
 
 theta = 1;
 
-thetaUb = 2;
-thetaLb = 0;
+thetaUb = [];
+thetaLb = [];
 %p = 1;
 %thetaUb = Inf * ones(p, 1);
 %thetaLb = - thetaUb;
@@ -548,8 +557,8 @@ end
 
 theta = 3;
 
-thetaUb = 6;
-thetaLb = 0;
+thetaUb = [];
+thetaLb = [];
 %p = 1;
 %thetaUb = Inf * ones(p, 1);
 %thetaLb = - thetaUb;
@@ -605,8 +614,8 @@ theta = [r; k; gamma];
 N0 = 1;
 Nc = 5.2;
 
-thetaLb = [0, 0, 0];
-thetaUb = [0.2, 1, 3];
+thetaLb = [];
+thetaUb = [];
 %p = length(theta);
 %thetaLb = -Inf * ones(p, 1);
 %thetaUb = - thetaLb;
@@ -685,8 +694,8 @@ ddeTheta = [r; k; gamma; tau1; tau2; tau3];
 N0 = 1;
 Nc = 5.2;
 
-thetaLb = [0, 0, 0, 24, 29, 99];
-thetaUb = [0.2, 1, 3, 26, 31, 101];
+thetaLb = [];
+thetaUb = [];[0.2, 1, 3, 26, 31, 101]
 %p = length(theta);
 %thetaLb = -Inf * ones(p, 1);
 %thetaUb = - thetaLb;
@@ -768,8 +777,8 @@ theta0 = [r; k; gamma];
 N0 = 0.23;
 Nc = 1.2;
 
-thetaLb = theta0 * 0;
-thetaUb = theta0 * 1000;
+thetaLb = [];
+thetaUb = [];
 %p = length(theta);
 %thetaLb = -Inf * ones(p, 1);
 %thetaUb = - thetaLb;
@@ -847,8 +856,8 @@ theta0 = [r; k; gamma];
 N0 = 0.18;
 Nc = 0.98;
 
-thetaLb = theta0 - theta0 * 0.5;
-thetaUb = theta0 + theta0 * 10;
+thetaLb = [];
+thetaUb = [];
 %p = length(theta);
 %thetaLb = -Inf * ones(p, 1);
 %thetaUb = - thetaLb;
@@ -915,8 +924,6 @@ if ( clearData )
     close all;
 end
 
-theta0 = [r; k; gamma];
-
 
 tau1 = 25;
 tau2 = 30;
@@ -925,8 +932,9 @@ tau3 = 100;
 N0 = 0.23;
 Nc = 1.2;
 
-thetaLb = [0, 0, 0, 24, 29, 99];
-thetaUb = [0.2, 1, 3, 26, 31, 100];
+theta0 = [];
+thetaLb = [];
+thetaUb = [];
 %p = length(theta);
 %thetaLb = -Inf * ones(p, 1);
 %thetaUb = - thetaLb;
@@ -952,7 +960,7 @@ fg_theta1 = @(x, delays, theta) delays(1) ^ 2 * ( 1 - x/K(delays, theta));
 fg_theta2 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta2(delays, theta)) / K(delays, theta) ^ 2;
 fg_theta3 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta3(delays, theta)) / K(delays, theta) ^ 2;
 
-fg0 = @(t, x, delays, theta) [fg_x(x, delays, theta), fg_theta1(x, delays, theta), fg_theta2(x, delays, theta), fg_theta3(x, delays, theta)];
+fg0 = @(t, x, delays, theta) [fg_x(x, delays, theta), fg_theta1(x, delays, theta), fg_theta2(x, delays, theta), fg_theta3(x, delays, theta), 0, 0, 0];
 fg = @(x, t, theta) fg0(t, x(1), x(2:length(x)), theta);
 
 delayF = [];...@(t) t;
@@ -962,7 +970,7 @@ ddeParamEst(...
     f, ...
     fg, ...
     [], ...
-    delays, delayF, max(thetaUb(4:6 )), ...
+    delays, delayF, max([tau1, tau2, tau3]), ...
     options, length(theta), thetaLb, thetaUb, theta0, []);
 
 

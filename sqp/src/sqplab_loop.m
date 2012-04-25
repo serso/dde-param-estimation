@@ -173,7 +173,15 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
 
     if options.verbose >= 4; fprintf(options.fout,'\n\nQP solve'); end
 
-    [d,lmqp,info] = sqplab_step (simul,x,lm,M,lb,ub,info,options,values);
+    [d,lmqp,info, dlmp, p, rp] = sqplab_step (simul,x,lm,M,lb,ub,info,options,values);
+    
+    % save last direction step
+    options.dlmp = dlmp;
+    
+    % save permutations
+    options.p = p;
+    options.rp = rp;
+    
     if info.flag; return; end
 
     if constrained_pbl; lmqpn = sqplab_dnorm (lmqp); end        % dual norm of the QP multiplier

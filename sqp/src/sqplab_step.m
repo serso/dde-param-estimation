@@ -1,4 +1,4 @@
-function [d,lmqp,info] = sqplab_step (simul,x,lm,M,lb,ub,info,options,values)
+function [d,lmqp,info, dlmp, p, rp] = sqplab_step (simul,x,lm,M,lb,ub,info,options,values)
 
 %
 % [d,lmqp,info] = sqplab_step (simul,x,lm,M,lb,ub,info,options,values)
@@ -133,146 +133,12 @@ function [d,lmqp,info] = sqplab_step (simul,x,lm,M,lb,ub,info,options,values)
     % Case without state constraint
 
     else
-        
-%         timeAfter = tic();
-%         pk_ = dlmp_(1:3);
-%         pk = P * pk_ + P_add;
-%         
-%         timeAfter = toc(timeAfter);
 
 
      % lastwarn('');             % make sure that the next 'lastwarn' will come from the linear solve below
      % warning('off','all');     % prevent from printing warning messages (although warning messages can be catch by 'lastwarn')
-      
-     %       timeBefore = tic();
-     
-     %display(full(info.ae));
-     %display(full(-info.ce));
-     
-     %       spparms('spumoni',0);
-     
-     M0 = [M, info.ae'; info.ae, zeros(me)];
-     b0 = [-info.g; -info.ce];
-     
-     if ( strcmp(options.stepMethod, 'reduce') )
-         
-         [P, P_add, ae_, ce_] = p_factors(info.ae, -info.ce, 1);
-         
-         M_ = transform_m(M, 1);
-         g_ = transform_m(info.g, 1);
-         
-         [rows, cols] = size(ae_);
-         Z = zeros(rows, rows);
-         
-         A_ = [M_, ae_'; ae_, Z];
-         %           spy(A_);
-         
-         %           dlmp_ = A_ \ [-g_; ce_];
-         dlmp_ = A_ \ [-g_; ce_];
-         pk_ = dlmp_(1:3);
-         
-         dlmp = P * pk_ + P_add;
-         
-     elseif ( strcmp(options.stepMethod, 'ldls') )
-         if ( isfield(options, 'ldlsThreshold') )
-             [L,D,P,S] = ldl(M0, options.ldlsThreshold);
-         else
-             [L,D,P,S] = ldl(M0);
-         end
-         dlmp = (S*P) * (L'\(D\(L\( (P'*S) * b0))));
-     elseif (strcmp(options.stepMethod, 'ldl'))
-         [L,D,P] = ldl(M0);
-         dlmp= P * (L'\(D\(L\(P' * b0))));
-     elseif (strcmp(options.stepMethod, 'lu'))
-         [L, U, P, Q] = lu(M0);
-         y = L \ (P * b0);
-         dlmp = Q * (U \ y);
-     elseif ( strcmp(options.stepMethod, 'symrcm') || ...
-             strcmp(options.stepMethod, 'amd') || ...
-             strcmp(options.stepMethod, 'colamd') || ...
-             strcmp(options.stepMethod, 'colperm') || ...
-             strcmp(options.stepMethod, 'dmperm') || ...
-             strcmp(options.stepMethod, 'symamd'))
-         if ( ~isfield(options, 'p') )
-             options.p= [];
-         end
-         
-         if (  isempty(options.p) )
-             
-             if ( strcmp(options.stepMethod, 'symrcm') )
-                 options.p = symrcm(M0);
-             elseif ( strcmp(options.stepMethod, 'amd') )
-                 options.p = amd(M0);
-             elseif ( strcmp(options.stepMethod, 'colamd') )
-                 options.p = colamd(M0);
-             elseif ( strcmp(options.stepMethod, 'colperm') )
-                 options.p = colperm(M0);
-             elseif ( strcmp(options.stepMethod, 'dmperm') )
-                 options.p = dmperm(M0);
-             elseif ( strcmp(options.stepMethod, 'symamd') )
-                 options.p = symamd(M0);
-             else
-                 throw (MException ('IllegalArgument:NotSupportedMethod', 'Method is not supported'));
-             end
-             [~, rp] = sort(options.p);
-             options.rp = rp;
-         end
-         
-         p = options.p;
-         rp = options.rp;
-         
-         if ( strcmp(options.stepMethod, 'symrcm') )
-             
-             [L, U, P] = lu(M0(p,p));
-             y = L \ (P * b0(p));
-             x0p = U \ y;
-             dlmp = x0p(rp);
-             
-         elseif ( strcmp(options.stepMethod, 'amd') )
-             % for Cholecky only
-             throw (MException ('IllegalArgument:NotSupportedMethod', 'Method is not supported'));
-         elseif ( strcmp(options.stepMethod, 'colamd') )
-             
-             [L, U, P] = lu(M0(:,p));
-             y = L \ (P * b0);
-             x0p = U \ y;
-             dlmp = x0p(rp);
-             
-         elseif ( strcmp(options.stepMethod, 'colperm') )
-             
-             [L, U, P] = lu(M0(:,p));
-             y = L \ (P * b0);
-             x0p = U \ y;
-             dlmp = x0p(rp);
-             
-         elseif ( strcmp(options.stepMethod, 'dmperm') )
-             % nothing useful in documentation found
-             throw (MException ('IllegalArgument:NotSupportedMethod', 'Method is not supported'));
-         elseif ( strcmp(options.stepMethod, 'symamd') )
-
-             [L, U, P] = lu(M0(p,p));
-             y = L \ (P * b0(p));
-             x0p = U \ y;
-             dlmp = x0p(rp);
-             
-         else
-             throw (MException ('IllegalArgument:NotSupportedMethod', 'Method is not supported'));
-         end
-     else
-         dlmp =  M0 \ b0;
-     end
-      
-%       timeBefore = toc(timeBefore);
-%       
-%        [rows, cols] = size(pk);
-%        pk_ = dlmp(1:rows);
-       
-       %display(full(pk_));
-      
-%       display(sprintf('Time before: %0.5f s', timeBefore));
-%         display(sprintf('Time after: %0.5f s', timeAfter));
-%       
-%         display(norm(pk - pk_, inf));
+           
+     [dlmp, p, rp] = sqplab_solve_step_ls(M, me, info, options);
 
       % see whether there has been a rounding error warning when solving the linear system
       if [strfind(lastwarn,'Matrix is close to singular or badly scaled'), ...

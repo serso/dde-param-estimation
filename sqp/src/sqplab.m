@@ -233,10 +233,6 @@ function [x,lm,info] = sqplab (simul,x0,lm0,lb,ub,options)
     options.fout    = 1;
     options.verbose = 1;
   end
-  
-  %     fields used in permutations algorithms (permutation created only once during the whole sqplab call)
-    options.p = [];
-    options.rp = [];
 
 % Prelimnaries:
 % - set default output arguments

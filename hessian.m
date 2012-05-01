@@ -5,19 +5,22 @@ function [lResult] = hessian ( x, lm, H, odeFHess, t, N, p, method, delays, dela
 
 lResult = 2 * H;
 
+
 theta = x ( N + 1 : N + p );
+
+effectiveDelays = getDelays(delays, theta);
 
 if ( strcmp(method, 'euler') )
     
     for k = 1:1:(N-1)
-        out = deal(odeFHess(getDelayedX(x, t, k, getDelays(delays, theta), delayF), t(k), theta));
+        out = deal(odeFHess(getDelayedX(x, t, k, effectiveDelays, delayF), t(k), theta));
         lResult(k, k) = lResult(k, k) - lm(k) * delta(t, k ) * out(1, 1);
     end
     
 elseif ( strcmp(method, 'backward_euler') )
     
     for k = 2:1:N
-        out = deal(odeFHess(getDelayedX(x, t, k, getDelays(delays, theta), delayF), t(k), theta));
+        out = deal(odeFHess(getDelayedX(x, t, k, effectiveDelays, delayF), t(k), theta));
         lResult(k, k) = lResult(k, k) - lm(k - 1) * delta(t, k - 1 ) * out(1, 1);
     end
     
@@ -25,8 +28,8 @@ elseif (strcmp(method, 'box'))
     
     for k = 1:1:N
         if ( k > 1 )
-            delayedX_1 = getDelayedX(x, t, k - 1, getDelays(delays, theta), delayF);
-            delayedX_2 = getDelayedX(x, t, k, getDelays(delays, theta), delayF);
+            delayedX_1 = getDelayedX(x, t, k - 1, effectiveDelays, delayF);
+            delayedX_2 = getDelayedX(x, t, k, effectiveDelays, delayF);
             delayedX = (delayedX_1 + delayedX_2) / 2;
             out = deal(odeFHess(delayedX, t(k - 1) + delta(t, k - 1 ) / 2 , theta));
             
@@ -42,8 +45,8 @@ elseif (strcmp(method, 'box'))
         end
         
         if ( k < N )
-            delayedX_1 = getDelayedX(x, t, k + 1, getDelays(delays, theta), delayF);
-            delayedX_2 = getDelayedX(x, t, k, getDelays(delays, theta), delayF);
+            delayedX_1 = getDelayedX(x, t, k + 1, effectiveDelays, delayF);
+            delayedX_2 = getDelayedX(x, t, k, effectiveDelays, delayF);
             delayedX = (delayedX_1 + delayedX_2) / 2;
             out = deal(odeFHess(delayedX, t(k) + delta(t, k ) / 2 , theta));
             
@@ -68,7 +71,7 @@ for k = (N+1):1:(N+p)
     for l = (N+1):1:(N+p)
         kl = 0;
         for index = 1:1:(N-1)
-            out = deal(odeFHess(getDelayedX(x, t, index, getDelays(delays, theta), delayF), t(index), theta));
+            out = deal(odeFHess(getDelayedX(x, t, index, effectiveDelays, delayF), t(index), theta));
             kl = kl - lm(index) * delta(t, index ) * out(k-N, l-N);
         end
         lResult(k, l) = lResult(k, l) + kl;

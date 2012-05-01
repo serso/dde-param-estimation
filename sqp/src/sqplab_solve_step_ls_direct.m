@@ -2,7 +2,7 @@ function [ dlmp, p, rp ] = sqplab_solve_step_ls_direct( M, me, info, options )
 %UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
 
-     A = [M, info.ae'; info.ae, zeros(me)];
+     A = [M, info.ae'; info.ae, sparse(me, me)];
      b = [-info.g; -info.ce];
      
      p = [];
@@ -16,7 +16,7 @@ function [ dlmp, p, rp ] = sqplab_solve_step_ls_direct( M, me, info, options )
          g_ = transform_m(info.g, 1);
          
          [rows, ~] = size(ae_);
-         Z = zeros(rows, rows);
+         Z = sparse(rows, rows);
          
          A_ = [M_, ae_'; ae_, Z];
          %           spy(A_);
@@ -34,9 +34,15 @@ function [ dlmp, p, rp ] = sqplab_solve_step_ls_direct( M, me, info, options )
              [L,D,P,S] = ldl(A);
          end
          dlmp = (S*P) * (L'\(D\(L\( (P'*S) * b))));
+     elseif (strcmp(options.stepMethod, 'block-decomposition'))
+         [n, ~] = size(M);
+         [L, D] = symBlockDecomposition(A, n);
+         dlmp = L'\(D\(L\b));
      elseif (strcmp(options.stepMethod, 'ldl'))
+         tic;
          [L,D,P] = ldl(A);
          dlmp= P * (L'\(D\(L\(P' * b))));
+         toc
      elseif (strcmp(options.stepMethod, 'lu'))
          [L, U, P, Q] = lu(A);
          y = L \ (P * b);
@@ -112,8 +118,11 @@ function [ dlmp, p, rp ] = sqplab_solve_step_ls_direct( M, me, info, options )
          else
              throw (MException ('IllegalArgument:NotSupportedMethod', 'Method is not supported'));
          end
-     else
+     elseif ( strcmp(options.stepMethod, 'mldivide') )
          dlmp =  A \ b;
+     else
+         display(options.stepMethod);
+         throw (MException ('IllegalArgument:NotSupportedMethod', 'Method is not supported'));
      end
      
 end

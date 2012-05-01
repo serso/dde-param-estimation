@@ -24,6 +24,8 @@ U = [];
 if ( isfield(options, 'iterativePrecondAlgorithm') )
     if ( strcmp(options.iterativePrecondAlgorithm, 'luinc') )
         [L,U] = luinc(A, tol);
+    elseif ( strcmp(options.iterativePrecondAlgorithm, 'no') )
+         % no
     else
         display(options.iterativePrecondAlgorithm);
         throw (MException ('IllegalArgument:NotSupportedMethod', 'Method is not supported'));
@@ -37,8 +39,8 @@ elseif ( strcmp(options.stepMethod, 'bicgstabl') )
     dlmp = bicgstabl(A,b, tol, maxit, L, U, options.dlmp);
 elseif ( strcmp(options.stepMethod, 'cgs') )
     dlmp = cgs(A,b, tol, maxit, L, U, options.dlmp);
-elseif ( strcmp(options.stepMethod, 'qmres') )
-    dlmp = qmres(A,b, tol, maxit, L, U, options.dlmp);
+elseif ( strcmp(options.stepMethod, 'gmres') )
+    dlmp = gmres(A,b, [], tol, maxit, L, U, options.dlmp);
 elseif ( strcmp(options.stepMethod, 'lsqr') )
     dlmp = lsqr(A,b, tol, maxit, L, U, options.dlmp);
 elseif ( strcmp(options.stepMethod, 'minres') )
@@ -47,7 +49,7 @@ elseif ( strcmp(options.stepMethod, 'qmr') )
     dlmp = qmr(A,b, tol, maxit, L, U, options.dlmp);
 elseif ( strcmp(options.stepMethod, 'symmlq') )
     dlmp = symmlq(A,b, tol, maxit, L, U, options.dlmp);
-elseif ( strcmp(options.stepMethod, 'default') )
+elseif ( strcmp(options.stepMethod, 'bicg') )
     dlmp = bicg(A,b, tol, maxit, L, U, options.dlmp);
 else 
     display(options.stepMethod);
@@ -55,7 +57,7 @@ else
 end
 
 if ( isfield(options, 'dlmp') && ~isempty(options.dlmp) )
-    display(norm(abs(dlmp-options.dlmp), inf));
+    % display(norm(abs(dlmp-options.dlmp), inf));
 end
 
 

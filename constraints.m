@@ -117,6 +117,7 @@ else
    ceh = [];
 end
 
+effectiveDelays = getDelays(delays, theta);
 
 %% creates output matrices
 
@@ -124,7 +125,7 @@ if ( strcmp(method, 'euler') )
     
     for i = 1:1:(N - 1)
         
-        delayedX = getDelayedX(x, t, i, getDelays(delays, theta), h);
+        delayedX = getDelayedX(x, t, i, effectiveDelays, h);
         
         if ( ~isempty(f) )
             ce(i) = - x(i) + x(i + 1) - delta(t, i) * f(delayedX, t(i), theta);
@@ -178,7 +179,7 @@ elseif (strcmp(method, 'backward_euler'))
     
     for i = 1:1:(N - 1)
         
-        delayedX = getDelayedX(x, t, i + 1, getDelays(delays, theta), h);
+        delayedX = getDelayedX(x, t, i + 1, effectiveDelays, h);
         
         if ( ~isempty(f) )
             ce(i) = - x(i) + x(i + 1) - delta(t, i) * f ( delayedX, t ( i + 1), theta );
@@ -214,8 +215,8 @@ elseif (strcmp(method, 'backward_euler'))
 elseif (strcmp(method, 'box'))
     
     for i = 1:1:(N - 1)
-        delayedX_i = getDelayedX(x, t, i, getDelays(delays, theta), h);
-        delayedX_i_1 = getDelayedX(x, t, i + 1, getDelays(delays, theta), h);
+        delayedX_i = getDelayedX(x, t, i, effectiveDelays, h);
+        delayedX_i_1 = getDelayedX(x, t, i + 1, effectiveDelays, h);
         delayedX = (delayedX_i + delayedX_i_1) / 2;
         
         
@@ -262,7 +263,7 @@ elseif (strcmp(method, 'rk4'))
     cej = [];
     
     for i = 1:1:(N - 1)
-        delayedX = getDelayedX(x, t, i, getDelays(delays, theta), h);
+        delayedX = getDelayedX(x, t, i, effectiveDelays, h);
         
         if ( ~isempty(f) )
             K1 = f(delayedX, t(i), theta);

@@ -66,7 +66,7 @@ function [xp,alpha,merit,info] = sqplab_armijo (simul,x,d,lb,ub,sigma,info,optio
 
   if slope >= 0
     info.flag = values.fail_on_ascent_dir;
-    if options.verbose, fprintf(options.fout,'\n\n### sqplab_armijo: stop on positive slope\n'); end
+    if options.verbose, fprintf(options.fout,'\n\n# sqplab_armijo: stop on positive slope\n'); end
     if options.verbose > 4
       fprintf(options.fout,'\n            g''*d  = %12.5e',info.g'*d);
       fprintf(options.fout,'\n            sigma = %12.5e',sigma);
@@ -105,7 +105,7 @@ function [xp,alpha,merit,info] = sqplab_armijo (simul,x,d,lb,ub,sigma,info,optio
     if norm(xp-x,inf) < options.dxmin
       info.flag = values.stop_on_dxmin;
       if options.verbose
-        fprintf(options.fout,'\n\n### sqplab_armijo: stop on dxmin\n');
+        fprintf(options.fout,'\n\n# sqplab_armijo: stop on dxmin\n');
         fprintf(options.fout,'\n            alpha      = %11.5e',alpha);
         fprintf(options.fout,'\n            |d|_inf    = %11.5e',norm(d,inf));
         fprintf(options.fout,'\n            |xp-x|_inf = %11.5e\n',norm(xp-x,inf));
@@ -124,11 +124,11 @@ function [xp,alpha,merit,info] = sqplab_armijo (simul,x,d,lb,ub,sigma,info,optio
         alpha = 0.5*alpha;
         continue;
       elseif outdic == 2,
-        if options.verbose; fprintf(options.fout,'\n\n### sqplab_armijo: the simulator wants to stop\n'); end;
+        if options.verbose; fprintf(options.fout,'\n\n# sqplab_armijo: the simulator wants to stop\n'); end;
         info.flag = values.stop_on_simul;
         return
       else
-        if options.verbose; fprintf(options.fout,'\n\n### sqplab_armijo: error with the simulator (outdic = %0i)\n',outdic); end;
+        if options.verbose; fprintf(options.fout,'\n\n# sqplab_armijo: error with the simulator (outdic = %0i)\n',outdic); end;
         info.flag = values.fail_on_simul;
         return
       end
@@ -155,7 +155,7 @@ function [xp,alpha,merit,info] = sqplab_armijo (simul,x,d,lb,ub,sigma,info,optio
 %     if meritp-merit == 0
 %       info.flag = 9;
 %       if options.verbose > 4
-%         fprintf(options.fout,'\n\n### sqplab_armijo: arret sur erreur d''arrondi (variation nulle de la fct de merite)\n');
+%         fprintf(options.fout,'\n\n# sqplab_armijo: arret sur erreur d''arrondi (variation nulle de la fct de merite)\n');
 %         fprintf(options.fout,'\n  alpha  = %12.5e',alpha);
 %         fprintf(options.fout,'\n  |xp-x| = %12.5e\n',norm(xp-x,inf));
 %         sqp_fin (simul, x, lambdaE, lambdaI, info.ce, info.ci, AE, AI, kkt, convergence, info.flag, options)

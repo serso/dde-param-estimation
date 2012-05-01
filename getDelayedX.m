@@ -22,7 +22,7 @@ for delay = delays
     
     if ( delay <= delayThreshold )
         % delay is less than threshold => try to find index
-        delayIndex = getDelayedIndex(t, i, delay);
+        delayIndex = getDelayedIndex(t, i, delay, false);
     else
         % delay is more than threshold => history function must be used
         delayIndex = -1;

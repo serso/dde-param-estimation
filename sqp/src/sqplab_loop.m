@@ -44,12 +44,12 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
     else
       fprintf(options.fout,'\niter simul  stepsize      cost      ');
     end
-    if nb+mi+me+ms
+    if (nb + mi + me + ms)
       fprintf(options.fout,'|grad Lag|  feasibility');
     else
       fprintf(options.fout,'|gradient|');
     end
-    if (options.algo_method == values.quasi_newton) & constrained_pbl
+    if (options.algo_method == values.quasi_newton) && constrained_pbl
       fprintf(options.fout,'  BFGS');
     end
   end
@@ -72,7 +72,7 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
         info.flag = values.fail_strange;
         return
       else
-        if ~constrained_pbl & (options.df1 > 0) & (info.f > 0)
+        if ~constrained_pbl && (options.df1 > 0) & (info.f > 0)
           % Fletcher's scaling (expected decrease at the first iteration is options.df1*info.f)
           M = (2*options.df1*info.f/(info.g'*info.g))*eye(n);
         else
@@ -114,7 +114,8 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
     info.glagn = norm(info.glag,inf);
     info.feasn = norm(feas,inf);
     info.compl = norm(comp,inf);
-    if (info.niter > 0) & (options.verbose >= 4)
+    
+    if (info.niter > 0) && (options.verbose >= 4)
       fprintf(options.fout,'\n\nOptimality:');
       if constrained_pbl
         fprintf(options.fout,'\n  |grad Lag|      = %12.5e',info.glagn);
@@ -124,7 +125,7 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
         fprintf(options.fout,' |grad f| = %12.5e',info.glagn);
       end
     end
-    if (info.glagn <= options.tol(1)) & (info.feasn <= options.tol(2)) & (info.compl <= options.tol(3))
+    if (info.glagn <= options.tol(1)) && (info.feasn <= options.tol(2)) && (info.compl <= options.tol(3))
       info.flag = values.success;
       return
     end
@@ -219,7 +220,7 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
 
     % Globalization by linesearch **********************************************
 
-    if (options.algo_globalization == values.linesearch) & ~null_step
+    if (options.algo_globalization == values.linesearch) && ~null_step
 
       % do the linesearch if the step d is not too small; this can occur if x is almost optimal but not lm (then the QP solver
       % return an almost zero d and an almost correct lm)
@@ -240,7 +241,7 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
       if isfield(options,'algo_descent') && options.algo_descent == values.wolfe
         [xp,alpha,info] = sqplab_wolfe (simul,x,d,lb,ub,info,options,values);
       else
-        [xp,alpha,merit,info] = sqplab_armijo (simul,x,d,lb,ub,sigma,info,options,values);
+        [xp,alpha,~,info] = sqplab_armijo (simul,x,d,lb,ub,sigma,info,options,values);
       end
       if info.flag
         x = xp;
@@ -249,14 +250,14 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
           if constrained_pbl; lm = lm+alpha*(lmqp-lm); end
           % call the simulator for computing g, ai, ae, and as at the new point
           info.nsimul(3) = info.nsimul(3) + 1;
-          [outdic,tmp,tmp,tmp,tmp,info.g,info.ai,info.ae] = simul(3,x);
+          [outdic,~,~,~,~,info.g,info.ai,info.ae] = simul(3,x);
           if outdic; [info] = sqplab_badsimul (outdic,info,options,values); return; end
           % check whether convergence is reached
           [feas,comp,info] = sqplab_optimality (simul,x,lm,lb,ub,info,options,values);
           info.glagn = norm(info.glag,inf);
           info.feasn = norm(feas,inf);
           info.compl = norm(comp,inf);
-          if (info.glagn <= options.tol(1)) & (info.feasn <= options.tol(2)) & (info.compl <= options.tol(3));
+          if (info.glagn <= options.tol(1)) && (info.feasn <= options.tol(2)) && (info.compl <= options.tol(3));
             info.flag = values.success;
           end
         end
@@ -320,7 +321,7 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
 
       if ~isfield(options,'algo_descent') || options.algo_descent ~= values.wolfe
         info.nsimul(3) = info.nsimul(3) + 1;
-        [outdic,tmp,tmp,tmp,tmp,info.g,info.ai,info.ae] = simul(3,x);
+        [outdic,~,~,~,~,info.g,info.ai,info.ae] = simul(3,x);
         if outdic; [info] = sqplab_badsimul (outdic,info,options,values); return; end
       end
 
@@ -333,7 +334,7 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
 
       % save some information for a quasi-Newton update, before updating ai and ae
 
-      if (options.algo_method == values.quasi_newton) & ~null_step
+      if (options.algo_method == values.quasi_newton) && ~null_step
         s = d;
         y = -info.g;
         if mi; y = y - info.ai'*lm(n+1:n+mi); end
@@ -403,12 +404,10 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
         [M,info] = sqplab_bfgs_inv (M,y,s,first,info,options,values);
       end
       if info.flag; return; end
-      if (options.verbose == 3) & constrained_pbl
+      if (options.verbose == 3) && constrained_pbl
         fprintf(options.fout,'  %4.2f',pc);
       end
 
     end
 
   end
-
-return

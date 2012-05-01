@@ -51,23 +51,15 @@ D1 = 2 * Lb;
 V = A(1:n,n+1:cols);
 W = V / 2;
 
-method = 'asym';
+method = 'sym';
 
 if ( strcmp(method, 'sym') )
-    tic;
     W0 = -W' * D1 * W;
-    toc
-    tic;
     [Lc, D2, P] = ldl(W0);
-    toc;
 elseif (strcmp(method, 'asym'))
-    tic;
     W_ = Lb \ W;
     W0 = - V' * W_;
-    toc
-    tic;
     [Lc, D2, P] = ldl(W0);
-    toc
 else   
     throw (MException ('IllegalArgument:UnsupportedMathod', 'Unsupported method!'));
 end

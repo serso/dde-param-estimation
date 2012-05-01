@@ -40,9 +40,10 @@ if ( ~isfield(options, 'thetaTol') )
     options.thetaTol = 10^-2;
 end    
 
+options.maxApproximationN = 30000;
 
 if ( ~isfield(options, 'maxNumberOfIterations') )     
-    options.maxNumberOfIterations = 10;
+    options.maxNumberOfIterations = 4;
 end    
 
 if ( options.sqp )
@@ -152,6 +153,9 @@ for i = 1:2147483647
     
     NGrid(i) = approximationN;
     
+    fprintf('\n#########Start step for approximation N');
+    fprintf('\nApproximation N = %i', approximationN);
+    
     [xResult, thetaResult, sumOfSquares, ~, output, ~, ~, ~, timeResult] = ...
         ddeParamEstStep ( ...
         f, ...
@@ -191,7 +195,7 @@ for i = 1:2147483647
     prevXResult = xResult;
     
     %% new dimension of vector x
-    approximationN = ( i + 1 ) * length(x) - 1;
+    approximationN = (2 ^ ( i + 1 )) * length(x) - 1;
     
     % interpolate current result to x0 (to initial vector of algorithm)
     x0 = interpolate(xResult, approximationN, 'spline')';
@@ -199,8 +203,19 @@ for i = 1:2147483647
     % setting additional initial parameter for theta
     x0(approximationN + 1 : approximationN + p) = thetaResult;
     
+    fprintf('\n#########End step for approximation N');
+    
     if ( i >= options.maxNumberOfIterations || ...
+            approximationN >= options.maxApproximationN || ...
             (xDiffs(i) < options.xTol && thetaDiffs(i) < options.thetaTol ))
+        
+        fprintf('\nddeParamEst: stop');
+        fprintf('\n            iteration                   = %i     max = %i', i, options.maxNumberOfIterations);
+        fprintf('\n            approximation N             = %i     max = %i', approximationN, options.maxApproximationN);
+        fprintf('\n            |x_(i-1)-x_(i)|_inf         = %11.5e tol = %11.5e', xDiffs(i), options.xTol);
+        fprintf('\n            |theta_(i-1)-theta_(i)|_inf = %11.5e tol = %11.5e', thetaDiffs(i), options.thetaTol);
+        fprintf('\n');
+        
         % time to stop
         break;
     end

@@ -178,7 +178,9 @@ H_by_2 = 2 * H;
 % sqpTimerId = tic;
 
 if ( options.sqp )
-      
+    
+    options.sqpOptions.dxmin = options.xTol / 1000;
+    
     [solution, lambdaResult, iterations, funCount] = sqp(    ...
         N + p, N - 1, ...
         @(x_k)lsf(x_k), ...
@@ -197,6 +199,8 @@ if ( options.sqp )
     hessResult = 1;
     
 else
+    
+    options.optOptions.TolX = options.xTol / 1000;
     
     [solution, sosResult, exitflagResult, outputResult, lambdaResult, gradResult, hessResult] = ...
         fmincon( ...

@@ -12,7 +12,7 @@ function [t, x, xWithErrors, minTDist, maxTDist] = createInitialGrid (f, N, tMin
 % argument checking
 
 if ( N <= 0)
-    throw (MException ('ArgumentCheck:OutOfRange', 'tMax has to be more than tMin'));
+    throw (MException ('ArgumentCheck:OutOfRange', 'N must be positive'));
 end
 
 if ( tMax <= tMin ) 

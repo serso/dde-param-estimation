@@ -36,11 +36,11 @@ for delay = effectiveDelays
     else
        display(effectiveDelays);
        
-       throw (MException ('AssertionError:ConditionFailed', 'Delay must be positive!'));
+       % throw (MException ('AssertionError:ConditionFailed', 'Delay must be positive!'));
        
        % no way
-       % result(i) = 0;
-       % i = i + 1;
+       result(i) = 0;
+       i = i + 1;
     end
 end
 

@@ -159,9 +159,9 @@ if ( strcmp(method, 'euler') )
             
             [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, i, i, - lm(i) * delta(t, i) * fhi(1, 1)); 
             for j = 1:p
-                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, i, N + j, - delta(t, i) * fhi(1, 1 + j));
-                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, N + j, i, - delta(t, i) * fhi(1 + j, 1));
-                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, N + j, N + j, - delta(t, i) * fhi(1 + j, 1 + j));
+                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, i, N + j, - lm(i) * delta(t, i) * fhi(1, 1 + j));
+                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, N + j, i, - lm(i) * delta(t, i) * fhi(1 + j, 1));
+                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, N + j, N + j, - lm(i) * delta(t, i) * fhi(1 + j, 1 + j));
             end
         end
         
@@ -206,10 +206,28 @@ elseif (strcmp(method, 'backward_euler'))
             end
         end
         
+        if (~isempty(fh)) 
+            % fhi - function hessian at the point (t_i, x_i)
+            fhi = deal(fh(getDelayedX(x, t, i, getDelays(delays, theta), h), t(i), theta));
+            
+            tmp = - lm(i) * delta(t, i) * fhi(1, 1);
+            [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, i+1, i, tmp); 
+            [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, i, i + 1, tmp); 
+            for j = 1:p
+                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, i, N + j, - lm(i) * delta(t, i) * fhi(1, 1 + j));
+                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, N + j, i, - lm(i) * delta(t, i) * fhi(1 + j, 1));
+                [cehArray, ceh_i] = addSparseElement(cehArray, ceh_i, N + j, N + j, - lm(i) * delta(t, i) * fhi(1 + j, 1 + j));
+            end
+        end
+        
     end
     
     if ( ~isempty(fg) )
         cej = createSparseMatrix(cejArray);
+    end
+    
+    if ( ~isempty(fh) )
+        ceh = createSparseMatrix(cehArray);
     end
     
 elseif (strcmp(method, 'box'))

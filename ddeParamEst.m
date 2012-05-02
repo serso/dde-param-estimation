@@ -5,8 +5,8 @@ function [x, xResult, thetaResult, sumOfSquares, time] = ddeParamEst( ...
     options, p, ...
     thetaLb, thetaUb,theta0, deltaT)
 
-addPath('./sqp/src');
-addPath('./reduce');
+addpath('./sqp/src');
+addpath('./reduce');
 
 timerId = tic;
 
@@ -43,7 +43,7 @@ end
 options.maxApproximationN = 30000;
 
 if ( ~isfield(options, 'maxNumberOfIterations') )     
-    options.maxNumberOfIterations = 4;
+    options.maxNumberOfIterations = 10;
 end    
 
 if ( options.sqp )
@@ -243,7 +243,7 @@ time = toc(timerId);
 
 if ( options.debug || options.showResult )
     display(strcat('Results for: ', options.taskName));
-    display(sprintf('Approximation grid: %i', approximationN));
+    display(sprintf('Approximation grid: %i\n', approximationN));
     
 %     display(absoluteXErrors);
 %     display(absoluteThetaErrors);

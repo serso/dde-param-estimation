@@ -6,8 +6,8 @@ function ddeParamEst_TEST_SUITE()
 clc;
 close all;
 
-addPath('./sqp/src');
-addPath('./reduce');
+addpath('./sqp/src');
+addpath('./reduce');
 
 % %% SQP
 % 
@@ -84,7 +84,7 @@ clearData = true;
 % methods = {'euler' 'backward_euler' 'box' 'rk4'};
 
 % number of known points (i.e. values of function x(t))
-N = 1000;
+N = 10;
 
 xSigmaError = 0.02;
 tSigmaError = 0.0;
@@ -92,7 +92,7 @@ tSigmaError = 0.0;
 options.xTol = 10^-5;
 options.thetaTol = 10^-5;
 
-% optOptions = optimset('Algorithm', 'sqp');
+%optOptions = optimset('Algorithm', 'sqp');
 optOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 6000);
 % optOptions = optimset(optOptions, 'SubproblemAlgorithm', 'cg');
 optOptions = optimset(optOptions, 'DerivativeCheck', 'off');
@@ -102,8 +102,8 @@ optOptions = optimset(optOptions, 'FinDiffType', 'central');
 options.optOptions = optOptions;
 
 options.sqp = true;
-% options.hessian_method = 'gauss-newton';
-options.hessian_method = 'newton';
+options.hessian_method = 'gauss-newton';
+%options.hessian_method = 'newton';
 
 % sqpOptions.algo_method        = 'quasi-Newton';
 sqpOptions.algo_method        = 'Newton';
@@ -124,7 +124,8 @@ options.sqpOptions = sqpOptions;
 % options.sqpOptions = sqpOptions;
 
 %method = 'backward_euler';
-options.method = 'backward_euler';
+%options.method = 'backward_euler';
+options.method = 'euler';
 
 %options.method = method;
 options.showResult = showResult; 
@@ -375,7 +376,6 @@ compareTimes(tMin, tMax, ...
 
 %% 6
 
-N = 1000;
 options.showResult = true;
 options.taskName = 'task_06';
 

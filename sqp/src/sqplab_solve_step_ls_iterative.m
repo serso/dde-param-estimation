@@ -21,9 +21,20 @@ end
 
 L = [];
 U = [];
+
+%tic;
 if ( isfield(options, 'iterativePrecondAlgorithm') )
+    iterativePrecondAlgorithmThresh = 0.1;
+    if ( isfield(options, 'iterativePrecondAlgorithmThresh') )
+        iterativePrecondAlgorithmThresh = options.iterativePrecondAlgorithmThresh;
+    end
+    
     if ( strcmp(options.iterativePrecondAlgorithm, 'luinc') )
-        [L,U] = luinc(A, tol);
+        [L,U] = luinc(A, iterativePrecondAlgorithmThresh);
+        if ( strfind(lastwarn,'Incomplete upper triangular factor has') )
+            L = [];
+            U = [];
+        end
     elseif ( strcmp(options.iterativePrecondAlgorithm, 'no') )
          % no
     else
@@ -31,8 +42,10 @@ if ( isfield(options, 'iterativePrecondAlgorithm') )
         throw (MException ('IllegalArgument:NotSupportedMethod', 'Method is not supported'));
     end
 end
+%toc
 
 
+%tic;
 if ( strcmp(options.stepMethod, 'bicgstab') )
     dlmp = bicgstab(A,b, tol, maxit, L, U, options.dlmp);
 elseif ( strcmp(options.stepMethod, 'bicgstabl') )
@@ -55,6 +68,7 @@ else
     display(options.stepMethod);
     throw (MException ('IllegalArgument:NotSupportedMethod', 'Method is not supported'));
 end
+%toc
 
 if ( isfield(options, 'dlmp') && ~isempty(options.dlmp) )
     % display(norm(abs(dlmp-options.dlmp), inf));

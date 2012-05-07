@@ -179,9 +179,11 @@ H_by_2 = 2 * H;
 
 if ( options.sqp )
     
-    options.sqpOptions.dxmin = options.xTol / 1000;
+    options.sqpOptions.dxmin = options.xTol;
+    options.sqpOptions.iterativeTol = options.xTol;
+
     
-    [solution, lambdaResult, iterations, funCount] = sqp(    ...
+    [solution, lambdaResult, iterations, funCount, ~, sqpInfo] = sqp(    ...
         N + p, N - 1, ...
         @(x_k)lsf(x_k), ...
         @(x_k, lm_k)lsf_lh(x_k, lm_k), ...
@@ -194,13 +196,13 @@ if ( options.sqp )
     
     sosResult = lsf(solution);
     exitflagResult = 1;
-    outputResult = struct('iterations', iterations, 'funcCount', funCount);
+    outputResult = struct('iterations', iterations, 'funcCount', funCount, 'sqpInfo', sqpInfo);
     gradResult = 1;
     hessResult = 1;
     
 else
     
-    options.optOptions.TolX = options.xTol / 1000;
+    options.optOptions.TolX = options.xTol / 10;
     
     [solution, sosResult, exitflagResult, outputResult, lambdaResult, gradResult, hessResult] = ...
         fmincon( ...

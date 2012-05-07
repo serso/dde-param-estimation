@@ -40,10 +40,10 @@ if ( ~isfield(options, 'thetaTol') )
     options.thetaTol = 10^-2;
 end    
 
-options.maxApproximationN = 30000;
+options.maxApproximationN = 20000;
 
 if ( ~isfield(options, 'maxNumberOfIterations') )     
-    options.maxNumberOfIterations = 10;
+    options.maxNumberOfIterations = 20;
 end    
 
 if ( options.sqp )
@@ -95,6 +95,15 @@ if (nargin <= obligatoryArgs + 3 || isempty(deltaT))
         end
     end
     
+end
+
+fprintf('\n######Starting ddeParamEst with next initial parameters: ');
+display(options);
+if ( options.sqp && isfield(options, 'sqpOptions') )
+    display(options.sqpOptions);
+end
+if ( ~options.sqp && isfield(options, 'optOptions') )
+    display(options.optOptions);
 end
 
 if ( options.debug || options.showResult )
@@ -153,7 +162,7 @@ for i = 1:2147483647
     
     NGrid(i) = approximationN;
     
-    fprintf('\n#########Start step for approximation N');
+    fprintf('\n#########Start step for approximation N: %i', i);
     fprintf('\nApproximation N = %i', approximationN);
     
     [xResult, thetaResult, sumOfSquares, ~, output, ~, ~, ~, timeResult] = ...
@@ -172,6 +181,20 @@ for i = 1:2147483647
     iterations(i) = output.iterations;
     funCounts(i) = output.funcCount;
     times(i) = timeResult;
+    
+    if ( isfield(output, 'sqpInfo') )
+        oldFormat = get(0,'format');
+        format('long');
+        
+        %fprintf('SQP iteration times (full):\n')
+        %display(output.sqpInfo.times);
+        fprintf('SQP iteration times (only iteration algorithm):\n')
+        display(output.sqpInfo.stepAlgoTimes');
+        fprintf('SQP iteration times (only iteration algorithm) MEAN:\n')
+        display(mean(output.sqpInfo.stepAlgoTimes));
+        
+        format(oldFormat);
+    end
     
     if ( options.showIntermidiateResult )
         display('Iteration ended!');
@@ -195,7 +218,8 @@ for i = 1:2147483647
     prevXResult = xResult;
     
     %% new dimension of vector x
-    approximationN = (2 ^ ( i + 1 )) * length(x) - 1;
+    approximationN = (2 ^ i) * length(t) - 1;
+    % approximationN = (2 ^ i) * length(x) - 1;
     
     % interpolate current result to x0 (to initial vector of algorithm)
     x0 = interpolate(xResult, approximationN, 'spline')';
@@ -203,11 +227,12 @@ for i = 1:2147483647
     % setting additional initial parameter for theta
     x0(approximationN + 1 : approximationN + p) = thetaResult;
     
-    fprintf('\n#########End step for approximation N');
+    fprintf('\n#########End step for approximation N: %i', i');
     
     if ( i >= options.maxNumberOfIterations || ...
-            approximationN >= options.maxApproximationN || ...
-            (xDiffs(i) < options.xTol && thetaDiffs(i) < options.thetaTol ))
+            approximationN >= options.maxApproximationN )
+        
+        
         
         fprintf('\nddeParamEst: stop');
         fprintf('\n            iteration                   = %i     max = %i', i, options.maxNumberOfIterations);
@@ -231,8 +256,8 @@ if ( options.showResult && ~options.showIntermidiateResult )
         %title(sprintf('Task: %s', options.taskName));
         %plot (t, x, 'xr');
         h = plot (interpolate(t, length(xResult), 'spline'), xResult(1:length(xResult)), '-b');
-        xlabel('t, years');
-        ylabel('x, billions');
+        xlabel('t');
+        ylabel('x');
 %         saveas(h, strcat('output/', options.taskName, '_result'), 'png'); 
     end
     

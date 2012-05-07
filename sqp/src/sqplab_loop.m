@@ -85,6 +85,9 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
       info.flag = values.fail_strange;
       return
   end
+  
+  info.times = [];
+  info.stepAlgoTimes = [];
 
 %-----------------------------------------------------------------------
 % The loop
@@ -174,7 +177,11 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
 
     if options.verbose >= 4; fprintf(options.fout,'\n\nQP solve'); end
 
-    [d,lmqp,info, dlmp, p, rp] = sqplab_step (simul,x,lm,M,lb,ub,info,options,values);
+    timerId = tic;
+    [d,lmqp,info, dlmp, p, rp, stepAlgoTime] = sqplab_step (simul,x,lm,M,lb,ub,info,options,values);
+    time = toc(timerId);
+    info.times(info.niter) = time;
+    info.stepAlgoTimes(info.niter) = time;
     
     % save last direction step
     options.dlmp = dlmp;

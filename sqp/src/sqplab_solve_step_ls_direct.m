@@ -39,10 +39,10 @@ function [ dlmp, p, rp ] = sqplab_solve_step_ls_direct( M, me, info, options )
          [L, D] = symBlockDecomposition(A, n);
          dlmp = L'\(D\(L\b));
      elseif (strcmp(options.stepMethod, 'ldl'))
-         tic;
+         %tic;
          [L,D,P] = ldl(A);
          dlmp= P * (L'\(D\(L\(P' * b))));
-         toc
+         %toc
      elseif (strcmp(options.stepMethod, 'lu'))
          [L, U, P, Q] = lu(A);
          y = L \ (P * b);

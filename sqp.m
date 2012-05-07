@@ -1,4 +1,4 @@
-function [xResult, lambdaResult, iterations, funCount, timeResult] = sqp ( N, cn, f, lh, ce, cej, x0, options, debug, lb, ub)
+function [xResult, lambdaResult, iterations, funCount, timeResult, sqpInfo] = sqp ( N, cn, f, lh, ce, cej, x0, options, debug, lb, ub)
 
 %
 % [xResult, lambdaResult, iterations, funCount, xStepsResult, timeResult] = sqp (N, cn, f, l_grad, lh, ce, cej, x0, options,
@@ -74,7 +74,7 @@ funCount = 0;
         %display(sprintf('indic %i %0.5f s', indic, time));
     end
 
-[xResult,lambdaResult,~] = sqplab(@dde_simul, x0, zeros(N + cn, 1), lb, ub, options);
+[xResult,lambdaResult,sqpInfo] = sqplab(@dde_simul, x0, zeros(N + cn, 1), lb, ub, options);
 
 timeResult = toc(timerId);
 

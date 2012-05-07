@@ -84,13 +84,13 @@ clearData = true;
 % methods = {'euler' 'backward_euler' 'box' 'rk4'};
 
 % number of known points (i.e. values of function x(t))
-N = 10;
+N = 100;
 
 xSigmaError = 0.02;
 tSigmaError = 0.0;
 
-options.xTol = 10^-5;
-options.thetaTol = 10^-5;
+options.xTol = 10^-2;
+options.thetaTol = 10^-2;
 
 %optOptions = optimset('Algorithm', 'sqp');
 optOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 6000);
@@ -102,19 +102,23 @@ optOptions = optimset(optOptions, 'FinDiffType', 'central');
 options.optOptions = optOptions;
 
 options.sqp = true;
+sqpOptions.miter = 30;
 options.hessian_method = 'gauss-newton';
 %options.hessian_method = 'newton';
+options.maxNumberOfIterations = 5;
 
 % sqpOptions.algo_method        = 'quasi-Newton';
 sqpOptions.algo_method        = 'Newton';
 sqpOptions.algo_globalization = 'line-search';
 % sqpOptions.algo_globalization = 'unit step-size';
-sqpOptions.stepMethodIterative = false;
-sqpOptions.stepMethod = 'ldl';
-sqpOptions.ldlsThreshold = 0.01;
-sqpOptions.iterativeTol = options.xTol / 1000;
-sqpOptions.iterativeMaxit = 20;
+sqpOptions.stepMethodIterative = true;
+sqpOptions.stepMethod = 'bicg';
+sqpOptions.ldlsThreshold = 0.0001;
+sqpOptions.iterativeMaxit = 1000;
 sqpOptions.iterativePrecondAlgorithm = 'luinc';
+%sqpOptions.iterativePrecondAlgorithm = 'no';
+sqpOptions.iterativePrecondAlgorithmThresh = 0.01;
+%sqpOptions.iterativePrecondAlgorithmThresh = 0.1;
 options.sqpOptions = sqpOptions;
 
 %     sqpOptions.tol(1)  = tolopt(1);  % tolerance on the gradient of the Lagrangian
@@ -124,8 +128,8 @@ options.sqpOptions = sqpOptions;
 % options.sqpOptions = sqpOptions;
 
 %method = 'backward_euler';
-%options.method = 'backward_euler';
-options.method = 'euler';
+options.method = 'backward_euler';
+% options.method = 'euler';
 
 %options.method = method;
 options.showResult = showResult; 
@@ -504,10 +508,62 @@ ddeParamEst_TEST(...
     fh, ...
     delays, delayF, max(delays), ...
     options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb);
+%%
+clc;
+close all;
+
+N = 1000;
+options.maxNumberOfIterations = 1;
+options.sqpOptions.iterativeMaxit = 1000;
+
+[t, ~, xWithErrors, deltaT, ~] = ...
+    createInitialGrid ( ...
+    x_sol, ...
+    N, tMin, tMax, ...
+    xSigmaError, tSigmaError);
+
+for iterativePrecondAlgorithmThresh = [0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2]%[0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2 0.25 0.3 0.35 0.4 0.5]
+    
+    options.sqpOptions.iterativePrecondAlgorithmThresh = iterativePrecondAlgorithmThresh;
+    fprintf('### luinc tolerance = %d', iterativePrecondAlgorithmThresh);
+    
+    ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
+    close all;
+    
+end
+options.maxNumberOfIterations = 20;
+
+%%
+clc;
+close all;
+
+N = 1000;
+options.maxNumberOfIterations = 1;
+options.sqpOptions.iterativeMaxit = 1000;
+
+[t, ~, xWithErrors, deltaT, ~] = ...
+    createInitialGrid ( ...
+    x_sol, ...
+    N, tMin, tMax, ...
+    xSigmaError, tSigmaError);
+
+for iterativePrecondAlgorithmThresh = [0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2]%[0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2 0.25 0.3 0.35 0.4 0.5]
+    
+    options.sqpOptions.iterativePrecondAlgorithmThresh = iterativePrecondAlgorithmThresh;
+    fprintf('### luinc tolerance = %d', iterativePrecondAlgorithmThresh);
+    
+    ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
+    close all;
+    
+end
+options.maxNumberOfIterations = 20;
+
 %% 8
 options.taskName = 'task_08';
+N = 1000;
+options.maxNumberOfIterations = 1;
+options.sqpOptions.ldlsThreshold = 0.000001;
 
-N = 100;
 if ( clearData )
     clc;
     close all;
@@ -521,7 +577,7 @@ thetaLb = [];
 %thetaUb = Inf * ones(p, 1);
 %thetaLb = - thetaUb;
 
-tau = 5;
+tau = 3;
 
 tMin = tau;
 tMax = 20;
@@ -554,6 +610,100 @@ ddeParamEst_TEST(...
     delays, delayF, max(delays), ...
     options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb);
 
+%%
+clc;
+close all;
+
+N = 1000;
+options.maxNumberOfIterations = 1;
+
+[t, ~, xWithErrors, deltaT, ~] = ...
+    createInitialGrid ( ...
+    x_sol, ...
+    N, tMin, tMax, ...
+    xSigmaError, tSigmaError);
+
+times = [];
+thetas = [];
+ldlsThresholds = [0.000000001 0.00000001 0.0000001 0.000001 0.00001 0.0001 0.001 0.01 0.1 0.2 0.3 0.4 0.5];
+i = 1;
+for ldlsThreshold = ldlsThresholds
+    
+    timerId = tic;
+    options.sqpOptions.ldlsThreshold = ldlsThreshold;
+    fprintf('### LDL threshold = %d', ldlsThreshold);
+    
+    [~, ~, thetas(i), ~, ~] = ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
+    close all;
+    
+    times(i) = toc(timerId);
+    i = i + 1;
+    
+end
+display(ldlsThresholds');
+display(times');
+display(thetas');
+options.maxNumberOfIterations = 20;
+
+%%
+clc;
+close all;
+
+N = 1000;
+options.maxNumberOfIterations = 3;
+
+[t, ~, xWithErrors, deltaT, ~] = ...
+    createInitialGrid ( ...
+    x_sol, ...
+    N, tMin, tMax, ...
+    xSigmaError, tSigmaError);
+
+times = [];
+thetas = [];
+maxits = 3:1:20;
+i = 1;
+for iterativeMaxit = maxits
+    
+    timerId = tic;
+    options.sqpOptions.iterativeMaxit = iterativeMaxit;
+    fprintf('### max iterations in SQP step = %i', iterativeMaxit);
+    
+    [~, ~, thetas(i), ~, ~] = ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
+    close all;
+    
+    times(i) = toc(timerId);
+    i = i + 1;
+    
+end
+display(maxits');
+display(times');
+display(thetas');
+options.maxNumberOfIterations = 20;
+
+%%
+clc;
+close all;
+
+N = 1000;
+options.maxNumberOfIterations = 1;
+options.sqpOptions.iterativeMaxit = 1000;
+
+[t, ~, xWithErrors, deltaT, ~] = ...
+    createInitialGrid ( ...
+    x_sol, ...
+    N, tMin, tMax, ...
+    xSigmaError, tSigmaError);
+
+for iterativePrecondAlgorithmThresh = [0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2]
+    
+    options.sqpOptions.iterativePrecondAlgorithmThresh = iterativePrecondAlgorithmThresh;
+    fprintf('### luinc tolerance = %d', iterativePrecondAlgorithmThresh);
+    
+    ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
+    close all;
+    
+end
+options.maxNumberOfIterations = 20;
 
 %%
 compareTimes(tMin, tMax, ...
@@ -612,6 +762,7 @@ thetaUb = [];
 %thetaLb = - thetaUb;
 
 x0 = 19.001;
+theta0 = [3.4; 20];
 
 tau = 0.74;
 
@@ -648,7 +799,7 @@ ddeParamEst_TEST(...
     fg, ...
     fh, ...
     delays, delayF, max(delays), ...
-    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb, x0);
+    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb, theta0);
 
 %%
 compareTimes(tMin, tMax, ...
@@ -809,7 +960,7 @@ N0 = 1;
 Nc = 5.2;
 
 thetaLb = [];
-thetaUb = [];[0.2, 1, 3, 26, 31, 101]
+thetaUb = [];%[0.2, 1, 3, 26, 31, 101]
 %p = length(theta);
 %thetaLb = -Inf * ones(p, 1);
 %thetaUb = - thetaLb;
@@ -949,9 +1100,6 @@ fileTaskName = 'reduced2_population_china';
 fileName = strcat('input/', fileTaskName, '.csv');
 
 options.taskName = strcat('task_14_', fileTaskName);
-
-options.sqpOptions.stepMethod = 'symrcm';
-
 
 input = csvread(fileName, 1, 0);
 

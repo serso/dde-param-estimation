@@ -1,54 +1,52 @@
-function [x, xResult, thetaResult, sumOfSquares, time] = ddeParamEst_TEST ( ...
-    N, ...
+function [x, p, info] = ddeParamEst_TEST ( ...
+    nx, ...
     tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol, ...
     f, fg, fh, ...
-    delays, delayF, maxDelay, ...
-    options, theta, p, ...
+    delays, xHistory, maxDelay, ...
+    options, ...
     xSigmaError, tSigmaError, ...
-    thetaLb, thetaUb, theta0)
+    pLb, pUb, p0)
+%DDEPARAMEST_TEST makes simple test of estimating DDE parameters
 
+%% INIT
 % setting default values for not obligatory arguments
-obligatoryArgs = 15;
+obligatoryArgs = 14;
 
-if ( nargin <= obligatoryArgs || isempty(thetaLb) )
-    thetaLb = -Inf * ones (p, 1);
+np = length(pSol);
+
+if ( nargin <= obligatoryArgs || isempty(pLb) )
+    pLb = -Inf * ones (np, 1);
 end
 
-if (nargin <= obligatoryArgs + 1 || isempty(thetaUb))
-    thetaUb = Inf * ones(p, 1);
+if (nargin <= obligatoryArgs + 1 || isempty(pUb))
+    pUb = Inf * ones(np, 1);
 end
 
-if (nargin <= obligatoryArgs + 2 || isempty(theta0))
-    theta0 = [];
+if (nargin <= obligatoryArgs + 2 || isempty(p0))
+    p0 = [];
 end
 
-% create grid (t, x)
+%%
+% create grid (t, x) and (t, xErr)
 
-[t, xExactSolution, xWithErrors, deltaT, ~] = ...
-    createInitialGrid ( ...
-    x_sol, ...
-    N, tMin, tMax, ...
+[t, xSol, xSolErr, deltaT, ~] = ...
+    ddeParamEst_createInitialGrid ( ...
+    xSolH, ...
+    nx, tMin, tMax, ...
     xSigmaError, tSigmaError);
 
-[x, xResult, thetaResult, sumOfSquares, time] = ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, maxDelay, options, p, thetaLb, thetaUb, theta0, deltaT);
+%% SOLVE
+[x, p, info] = ddeParamEst(t, xSolErr, f, fg, fh, delays, xHistory, maxDelay, options, np, pLb, pUb, p0, deltaT);
 
-if (  options.showResult )
-    display('Theta*');
-    display(theta);
-    display('max(theta - thetaResult)');
-    display(norm(theta - thetaResult, inf));
+%% PRINT RESULT
+if ( options.showResult )
+    display('Known p:');
+    display(pSol);
+    display('p* (estimated parameters):');
+    display(p);
+    fprintf('norm(p - p*) = %f\n', norm(pSol - p, inf));
 end
-
-i = 1;
-while ( t (i) - tMin <= maxDelay )
-    i = i + 1;
-end
-
-if (  options.showResult )
-    plot (t(i+1:length(t)), xExactSolution(i+1:length(xExactSolution)), '-r');
-    plot (t(i+1:length(t)), xWithErrors(i+1:length(xWithErrors)), '.r');
-end
-% saveas(h, strcat('output/', taskName, '_result'), 'png'); 
+% saveas(h, strcat('output/', taskName, '_result'), 'png');
 
 end

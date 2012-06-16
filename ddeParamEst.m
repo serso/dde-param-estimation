@@ -1,101 +1,84 @@
-function [x, xResult, thetaResult, sumOfSquares, time] = ddeParamEst( ...
+function [xResult, pResult, info] = ddeParamEst( ...
     t, x, ...
     f, fg, fh, ...
-    delays, delayF, maxDelay, ...
-    options, p, ...
-    thetaLb, thetaUb,theta0, deltaT)
-
-addpath('./sqp/src');
-addpath('./reduce');
+    delays, xHistory, maxDelay, ...
+    options, pn, ...
+    pLb, pUb, p0, deltaT)
 
 timerId = tic;
 
-% setting default options parameters 
-if ( ~isfield(options, 'debug') )     
-    options.debug = false;
-end
+%% ADD PATHS
+addpath('./sqp/src');
+addpath('./reduce');
+addpath('./bd');
 
-if ( ~isfield(options, 'showResult') )     
-    options.showResult = false;
-end
+%% SET DEFAULT OPTIONS
 
-if ( ~isfield(options, 'showIntermidiateResult') )     
-    options.showIntermidiateResult = false;
-end
+% setting default options parameters
+options = utils.setDefaultOptions(options, ...
+    {
+    {'debug', false}
+    {'showResult', false}
+    {'plotResult', false}
+    {'plotExtResult', false}
+    % applied below
+    %{'extTMax', t(end)}
+    {'showIntermidiateResult', false}
+    {'method', 'backward-euler'}
+    {'sqp', true}
+    {'xTol', 0.01}
+    {'pTol', 0.01}
+    {'pSol', []}
+    {'checkHessian', false}
+    {'checkJacobian', false}
+    {'maxApproximationN', 20000}
+    {'maxNumberOfIterations', 20}
+    {'sqpOptions', []}
+    });
 
-if( ~isfield(options, 'method') )
-    options.method = 'backward_euler';
-end
-
-
-if ( ~isfield(options, 'sqp') )     
-    options.sqp = false;
-end    
-
-if ( ~isfield(options, 'xTol') )     
-    options.xTol = 10^-2;
-end    
-
-if ( ~isfield(options, 'thetaTol') )     
-    options.thetaTol = 10^-2;
-end    
-
-options.maxApproximationN = 20000;
-
-if ( ~isfield(options, 'maxNumberOfIterations') )     
-    options.maxNumberOfIterations = 20;
-end    
 
 if ( options.sqp )
-    if ( ~isfield(options, 'sqpOptions') )
-        sqpOptions.algo_method        = 'Newton';
-        sqpOptions.algo_globalization = 'line-search';
-        sqpOptions.stepMethod = 'default';
-        options.sqpOptions = sqpOptions;
-    end
-    
-    if ( ~isfield(options.sqpOptions, 'algo_method'))
-        options.sqpOptions.algo_method        = 'Newton';
-    end
-    
-    if ( ~isfield(options.sqpOptions, 'algo_globalization'))
-        options.sqpOptions.algo_globalization        = 'line-search';
-    end
-    
-    if ( ~isfield(options.sqpOptions, 'stepMethod') ) 
-        options.stepMethod = 'default';
-    end
+    options.sqpOptions = utils.setDefaultOptions(options.sqpOptions, ...
+        {
+        {'algo_method', 'Newton'}
+        {'algo_globalization', 'line-search'}
+        {'stepMethod', 'default'}
+        {'stepMethodIterative', false}
+        });
 end
+
+%% SET DEFAULT FUNCTION ARGUMENTS
 
 % setting default values for not obligatory arguments
 obligatoryArgs = 10;
 
-if ( nargin <= obligatoryArgs || isempty(thetaLb) )
-    thetaLb = -Inf * ones (p, 1);
+if ( nargin <= obligatoryArgs || isempty(pLb) )
+    pLb = -Inf * ones (np, 1);
 end
 
-if (nargin <= obligatoryArgs + 1 || isempty(thetaUb))
-    thetaUb = Inf * ones(p, 1);
+if (nargin <= obligatoryArgs + 1 || isempty(pUb))
+    pUb = Inf * ones(np, 1);
 end
 
-if (nargin <= obligatoryArgs + 2 || isempty(theta0))
-    theta0 = zeros(p, 1);
+if (nargin <= obligatoryArgs + 2 || isempty(p0))
+    p0 = zeros(np, 1);
 end
 
 if (nargin <= obligatoryArgs + 3 || isempty(deltaT))
     
     deltaT = Inf;
-   
+    
     for i = 1: 1: size(t, 1)
         if ( i > 1 )
             delta = t(i, 1) - t(i - 1, 1);
             if ( delta < deltaT )
                 deltaT = delta;
-            end           
+            end
         end
     end
     
 end
+%% SHOW ALGORITHM INFORMATION
 
 fprintf('\n######Starting ddeParamEst with next initial parameters: ');
 display(options);
@@ -106,197 +89,161 @@ if ( ~options.sqp && isfield(options, 'optOptions') )
     display(options.optOptions);
 end
 
-if ( options.debug || options.showResult )
-    display(strcat('Solving task: ', options.taskName));
-    display(strcat('ODE parameter estimation: ', options.method));
-end
+%% SOLVE
 
-% create delay function (is not exists)
+% create delay function (if not exists)
 
-[t, x, minTDist, delayF] = extractDelayFunctionFromGrid(t, x, delayF, maxDelay);
+origT = t;
+origX = x;
+[t, x, minTDist, xHistory] = ddeParamEst_extractXHistoryFromGrid(t, x, xHistory, maxDelay);
+
+% t may be recalculated => apply extTMin and extTMax only here
+options = utils.setDefaultOptions(options, ...
+    {
+    {'extTMax', t(end)}
+    });
 
 % +1 has to guarantees that there would not be elements on the bounds
 approximationN = ceil( (max(t) - min(t)) / minTDist ) + 1;
 
-if ( options.debug )
-    display(x);
-    display(t);
-end
+% if ( options.debug )
+%     display(x);
+%     display(t);
+% end
 
-% absoluteThetaErrors = ones(1, 1);
-% absoluteXErrors = ones(1, 1);
-
-iterations = zeros(1, 1);
-funCounts = zeros(1, 1);
-
-times = zeros(1, 1);
-
-xDiffs = ones(1, 1);
-xDiffs(1) = Inf;
-
-thetaDiffs = ones(1, 1);
-thetaDiffs(1) = Inf;
-
-NGrid = zeros(1, 1);
-
-x0 = zeros(approximationN + p, 1);
-x0(1 : approximationN ) = interpolate(x, approximationN, 'spline');
-x0(approximationN + 1 : approximationN + p) = theta0;
-
-prevXResult = [];
-prevThetaResult = [];
-
-thetaResult = [];
-xResult = [];
-
-sumOfSquares = [];
-
-for i = 1:2147483647
-            
-    if ( options.showIntermidiateResult )
-        display('Start iteration of algorithm!');
-        display(sprintf('Iteration number: %i', i));
-        display(sprintf('Number of elements in grid: %i', approximationN));
-        display(sprintf('Number of known elements in grid: %i', length(t)));
-    end
-    
-    NGrid(i) = approximationN;
-    
-    fprintf('\n#########Start step for approximation N: %i', i);
-    fprintf('\nApproximation N = %i', approximationN);
-    
-    [xResult, thetaResult, sumOfSquares, ~, output, ~, ~, ~, timeResult] = ...
-        ddeParamEstStep ( ...
-        f, ...
-        fg, ...
-        fh, ...
-        t, x, approximationN, ...
-        p, delays, delayF, options.method, options.debug, ...
-        options.showIntermidiateResult, options, x0, ...
-        deltaT, ...
-        thetaLb, thetaUb);
-%     
-%     absoluteThetaErrors(i) = norm ( theta - thetaResult, inf );
-%     absoluteXErrors(i) = norm ( x - xResult, inf );
-    iterations(i) = output.iterations;
-    funCounts(i) = output.funcCount;
-    times(i) = timeResult;
-    
-    if ( isfield(output, 'sqpInfo') )
-        oldFormat = get(0,'format');
-        format('long');
-        
-        %fprintf('SQP iteration times (full):\n')
-        %display(output.sqpInfo.times);
-        fprintf('SQP iteration times (only iteration algorithm):\n')
-        display(output.sqpInfo.stepAlgoTimes');
-        fprintf('SQP iteration times (only iteration algorithm) MEAN:\n')
-        display(mean(output.sqpInfo.stepAlgoTimes));
-        
-        format(oldFormat);
-    end
-    
-    if ( options.showIntermidiateResult )
-        display('Iteration ended!');
-        display(sprintf('Iteration number: %i', i));
-        display(output);
-        display(xResult);
-        display(thetaResult);
-        display(xResult);
-        display(prevXResult - xResult);
-    end
-    
-    if ( ~isempty(prevXResult) )
-        xDiffs(i) = norm(prevXResult - xResult, inf);
-    end
-    
-    if ( ~isempty(prevThetaResult) )
-        thetaDiffs(i) = norm(prevThetaResult - thetaResult, inf);
-    end
-    
-    prevThetaResult = thetaResult;
-    prevXResult = xResult;
-    
-    %% new dimension of vector x
-    approximationN = (2 ^ i) * length(t) - 1;
-    % approximationN = (2 ^ i) * length(x) - 1;
-    
-    % interpolate current result to x0 (to initial vector of algorithm)
-    x0 = interpolate(xResult, approximationN, 'spline')';
-    
-    % setting additional initial parameter for theta
-    x0(approximationN + 1 : approximationN + p) = thetaResult;
-    
-    fprintf('\n#########End step for approximation N: %i', i');
-    
-    if ( i >= options.maxNumberOfIterations || ...
-            approximationN >= options.maxApproximationN )
-        
-        
-        
-        fprintf('\nddeParamEst: stop');
-        fprintf('\n            iteration                   = %i     max = %i', i, options.maxNumberOfIterations);
-        fprintf('\n            approximation N             = %i     max = %i', approximationN, options.maxApproximationN);
-        fprintf('\n            |x_(i-1)-x_(i)|_inf         = %11.5e tol = %11.5e', xDiffs(i), options.xTol);
-        fprintf('\n            |theta_(i-1)-theta_(i)|_inf = %11.5e tol = %11.5e', thetaDiffs(i), options.thetaTol);
-        fprintf('\n');
-        
-        % time to stop
-        break;
-    end
-    
-end
-
-if ( options.showResult && ~options.showIntermidiateResult )
-    if (~isempty(xResult))
-        figure('Position', [1, 1, 1024, 600]);
-        grid on;
-        hold on;
-        %title(sprintf('Task: %s\nMethod: %s\nApproximation grid: %i\nTime: %0.3f s', options.taskName, options.method, approximationN, toc(timerId)));
-        %title(sprintf('Task: %s', options.taskName));
-        %plot (t, x, 'xr');
-        h = plot (interpolate(t, length(xResult), 'spline'), xResult(1:length(xResult)), '-b');
-        xlabel('t');
-        ylabel('x');
-%         saveas(h, strcat('output/', options.taskName, '_result'), 'png'); 
-    end
-    
-    display(output);
-end
+[xResult, pResult, info] = ddeParamEst_loop( ...
+    f, ...
+    fg, ...
+    fh, ...
+    t, x, approximationN, ...
+    np, delays, xHistory, options, ...
+    deltaT, ...
+    pLb, pUb, p0);
 
 time = toc(timerId);
 
+%% SHOW RESULT
+if ( options.plotResult )
+    
+    if (~isempty(xResult))
+        
+        % plot result
+        figure('Position', [1, 1, 1024, 600]);
+        grid on;
+        hold on;
+        
+        h = gca;
+        set(h, 'FontSize', 18);
+        
+        %title(sprintf('Task: %s\nMethod: %s\nApproximation grid: %i\nTime: %0.3f s', options.taskName, options.method, approximationN, toc(timerId)));
+        %title(sprintf('Task: %s', options.taskName));
+        %plot (t, x, 'xr');
+        
+        tResult = utils.interpolate(t, length(xResult), 'spline');
+        resultDataPlot = ddeParamEst_plot(tResult, xResult, 'ob', options);
+        inputDataPlot = ddeParamEst_plot(origT, origX, 'xr', options);
+        
+        [~, ~, ~, plotTextStrings] = legend('DDE parameter estimation result', 'Input', 'Location', 'Best');
+        xlabel('t', 'FontSize', 18);
+        ylabel('x', 'FontSize', 18);
+        % title(options.taskName, 'FontSize', 18);
+        %         saveas(h, strcat('output/', options.taskName, '_result'), 'png');
+        
+        
+        % plot extrapolation to the right
+        if ( options.plotExtResult )
+            
+            tSpan = [t(1), options.extTMax];
+            
+            if ( isempty(delays) || ( length(delays) == 1 && delays(1) == 0 ) )
+                odeOptOptions = odeset('AbsTol', min([options.xTol, options.pTol]));
+                
+                odeF = @(t, x, p) f(x', t, p);
+                
+                xdeResult = ode45(odeF, tSpan, x(1), odeOptOptions, pResult);
+            else
+                
+                % prepare DDE input data
+                ddeOptOptions = ddeset('AbsTol', min([options.xTol, options.pTol]));
+                
+                % convert ddeParamEst input to dde23 input
+                ddeF = @(t, x, delays, p) f([x delays]', t, p);
+                
+                if (length(delays) == 1)
+                    ddeDelays = delays(1);
+                else
+                    ddeDelays = delays(2:end);
+                end
+                
+                ddeXHistory = @(t, p) xHistory(t);
+                
+                % do extrapolation
+                xdeResult = dde23(ddeF, ddeDelays, ddeXHistory, tSpan, ddeOptOptions, pResult);
+            end
+            
+            extT = linspace(tSpan(1), tSpan(2), 1000);
+            extX = deval(xdeResult, extT);
+            
+            
+            extDataPlot = ddeParamEst_plot(extT, extX, '-g', options);
+            legend([resultDataPlot; inputDataPlot; extDataPlot] , {plotTextStrings{:}, 'Extrapolated result'});
+        end
+    end
+end
+
 if ( options.debug || options.showResult )
+    
+    display('######################################');
     display(strcat('Results for: ', options.taskName));
-    display(sprintf('Approximation grid: %i\n', approximationN));
+    fprintf('Approximation grid: %i\n', approximationN);
     
-%     display(absoluteXErrors);
-%     display(absoluteThetaErrors);
+    fprintf('Last output of step algorithm\n');
+    disp(info.output);
     
-     if (~isempty(thetaResult))
-         display('Theta result');
-         display(thetaResult);
-     end
+    %     display(absoluteXErrors);
+    %     display(absoluteThetaErrors);
     
-    if (~isempty(sumOfSquares))
-        display(sprintf('Sum of squares: %s', sumOfSquares));
+    oldFormat = get(0,'format');
+    format('long');
+    
+    if (~isempty(pResult))
+        disp('P*: ');
+        disp(pResult);
     end
     
-    display(xDiffs);
-    display(thetaDiffs);
+    if (~isempty(info.sumOfSquares))
+        fprintf('Sum of squares: %d\n', info.sumOfSquares);
+    end
     
-    display(iterations);
-    display(funCounts);
+    fprintf('Sum of squares on the i-th step\n');
+    disp(info.sumsOfSquares);
     
-    display(NGrid);
-    display(times);
+    fprintf('X differences: |x_(i-1)-x_(i)| where i is i-th step of algorithm\n');
+    disp(info.xDiffs);
     
-%     figure;
-%     grid on;
-%     hold on;
-%     title('Time(N)');
-%     plot (NGrid, times, '-b');
-%     
-    display(sprintf('Time: %0.5f s', time));
+    fprintf('P differences: |p_(i-1)-p_(i)| where i is i-th step of algorithm\n');
+    disp(info.pDiffs);
+    
+    if ( ~isempty(options.pSol) )
+        fprintf('P solution differences: |p*-p_(i)| where i is i-th step of algorithm\n');
+        disp(info.pSolDiffs);
+    end
+    
+    format(oldFormat);
+    
+    fprintf('Iterations of step algorithm\n');
+    disp(info.iterations);
+    
+    fprintf('Number of times function is called on each step of algorithm\n');
+    disp(info.funCounts);
+    
+    fprintf('Approximation grid density: number of elements in approximation grid per step\n');
+    disp(info.ns);
+    
+    fprintf('Step times\n');
+    disp(info.times);
+    
+    fprintf('Total time: %0.5f s\n', time);
+    display('######################################');
 end
 end

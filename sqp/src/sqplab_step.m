@@ -28,6 +28,12 @@ function [d,lmqp,info, dlmp, p, rp, stepAlgoTime] = sqplab_step (simul,x,lm,M,lb
   d         = [];
   lmqp      = [];
   info.flag = 0;
+  
+  % aux variables
+  dlmp      = []; 
+  p         = [];
+  rp        = [];
+  stepAlgoTime = [];
 
 % Dimensions
 
@@ -135,10 +141,12 @@ function [d,lmqp,info, dlmp, p, rp, stepAlgoTime] = sqplab_step (simul,x,lm,M,lb
     else
 
 
-     % lastwarn('');             % make sure that the next 'lastwarn' will come from the linear solve below
-     % warning('off','all');     % prevent from printing warning messages (although warning messages can be catch by 'lastwarn')
+     lastwarn('');             % make sure that the next 'lastwarn' will come from the linear solve below
+     warning('off','all');     % prevent from printing warning messages (although warning messages can be catch by 'lastwarn')
            
      [dlmp, p, rp, stepAlgoTime] = sqplab_solve_step_ls(M, me, info, options);
+     
+     warning('on','all'); % revert warnging state
 
       % see whether there has been a rounding error warning when solving the linear system
       if [strfind(lastwarn,'Matrix is close to singular or badly scaled'), ...

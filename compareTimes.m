@@ -1,8 +1,9 @@
-function compareTimes(tMin, tMax, xSol, f, fg, fh, delays, delayF, maxDelay, options, thetaSol, xSigmaError, tSigmaError, thetaLb, thetaUb, theta0, methods, ns )
+function compareTimes(tMin, tMax, xSol, f, fg, fh, delays, delayF, maxDelay, options, pSol, xSigmaError, tSigmaError, pLb, pUb, p0, methods, ns )
 
 %%
 
 options.showResult = false;
+options.plotResult = false;
 
 % ns = [100 250 500 750 1000 1250 1500 1750 2000 2500 3000 5000 ];
 
@@ -18,14 +19,14 @@ end
 colors = {'m', 'r', 'g', 'b', 'k', 'c', 'y', 'm'}';
 close all;
 
-[p, ~] = size(thetaSol);
+[p, ~] = size(pSol);
         
 figure('Position', [1, 1, 1024, 600]);
 grid on;
 hold on;
 
 times = Inf * ones(length(ns), length(methods));
-thetaErrors = Inf * ones(length(ns), length(methods));
+pErrors = Inf * ones(length(ns), length(methods));
 
 
 iterativeMethods = {'bicgstab','bicgstabl','cgs','gmres', 'lsqr', 'minres', 'qmr', 'symmlq', 'bicg'}';
@@ -38,7 +39,7 @@ for ni = 1 : length(ns)
     fprintf('\n###N = %i', N);
     
     [t, ~, xWithErrors, deltaT, ~] = ...
-        createInitialGrid ( ...
+        ddeParamEst_createInitialGrid ( ...
         xSol, ...
         N, tMin, tMax, ...
         xSigmaError, tSigmaError);
@@ -71,15 +72,21 @@ for ni = 1 : length(ns)
 %             end
 %         end
         
-        [~, ~, thetaRes, ~, times(ni, methodi)] = ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, maxDelay, options, p, thetaLb, thetaUb, theta0, deltaT);
+        timerId = tic;
+        [~, pRes] = ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, maxDelay, options, p, pLb, pUb, p0, deltaT);
+        times(ni, methodi) = toc(timerId);
         
-        thetaErrors(ni, methodi) = norm(thetaSol - thetaRes, inf);
+        pErrors(ni, methodi) = norm(pSol - pRes, inf);
         
         fprintf('\n######End step for method');
     end
     
     fprintf('\n###End step for N');
 end
+
+figure;
+hold on;
+grid on;
 
 times = times';
 for methodi = 1 : length(methods)
@@ -89,7 +96,7 @@ end
 
 legend(methods);
 
-display(thetaErrors);
+display(pErrors);
 
 
 %%

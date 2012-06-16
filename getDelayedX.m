@@ -1,13 +1,13 @@
-function xDelays = getDelayedX ( x, t, i, delays, h )
+function xDelays = getDelayedX ( x, t, i, delays, xHistory, options )
 %GETDELAYEDX return vector x calculated at the points t(i)-τ_1, ... ,
 % t(i)-τ_N: [x(t(i)-τ_1), ..., x(t(i)-τ_N)]. Note: τ_i might be equal to 0.
 %
-%   xDelays = GETDELAYEDX( x, t, i, delays, h ):
+%   xDelays = GETDELAYEDX( x, t, i, delays, xHistory ):
 %   x       vector of x values
 %   t       vector of t values
 %   i       curent position in t array (t(i) is current position in time)
 %   delays  delays of time which calculation of x is needed
-%   h       handler for history function to calculate values of x(t(i)-τ_N)
+%   xHistory       handler for history function to calculate values of x(t(i)-τ_N)
 %   if t(i)-τ_N < t(0) (=min(t))
 
 xDelays = zeros(length(delays), 1);
@@ -22,7 +22,7 @@ for delay = delays
     
     if ( delay <= delayThreshold )
         % delay is less than threshold => try to find index
-        delayIndex = getDelayedIndex(t, i, delay, false);
+        delayIndex = getDelayedIndex(t, i, delay, options.tEven);
     else
         % delay is more than threshold => history function must be used
         delayIndex = -1;
@@ -36,8 +36,11 @@ for delay = delays
             delayThreshold = delay;
         end
         % no history is available - use function to get delayed x
-        xDelays(j) = h( -delay + t(i) );
+        xDelays(j) = xHistory( -delay + t(i) );
         if ( isnan(xDelays(j)) || isempty(xDelays(j)) )
+            display(i);
+            display(delay);
+            display(xHistory);
             display(xDelays(j));
             throw (MException ('ArgumentCheck:IllegalArgument', 'Delay function returned bad value!'));
         end

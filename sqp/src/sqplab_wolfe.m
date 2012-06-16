@@ -1,4 +1,4 @@
-function [x,alpha,info] = sqplab_wolfe (simul,x0,d,lb,ub,info,options,values);
+function [x,alpha,info] = sqplab_wolfe (simul,x0,d,lb,ub,info,options,values)
 
 %
 % [x,alpha,info] = sqplab_wolfe (simul,x0,d,lb,ub,info,options,values);
@@ -179,7 +179,7 @@ return
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [t] = interpol2 (tm,tp,isg,f0,g0,fp);
+function [t] = interpol2 (tm,tp,isg,f0,g0,fp)
 
 %
 % [t] = interpol2 (tm,tp,isg,f0,g0,fp);

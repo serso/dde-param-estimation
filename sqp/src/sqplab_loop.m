@@ -34,6 +34,8 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
   sigmab          = [];
   constrained_pbl = nb+mi+me+ms;
   null_step       = 0;
+  
+  info.pSolDiffs = [];
 
 % Initial printing
 
@@ -360,6 +362,12 @@ function [x,lm,info] = sqplab_loop (simul,n,nb,mi,me,ms,x,lm,lb,ub,info,options,
       [outdic,info.f,info.ci,info.ce,info.cs,info.g,info.ai,info.ae] = simul(4,x);
       if outdic; [info] = sqplab_badsimul (outdic,info,options,values); return; end
 
+    end
+    
+    if (~isempty(options.pSol))
+        np = length(options.pSol); 
+        nx = length(x);
+        info.pSolDiffs(end + 1) = norm(x(nx - np + 1:nx) - options.pSol, inf);
     end
 
   %--------------------

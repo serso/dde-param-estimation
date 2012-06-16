@@ -36,7 +36,7 @@ function [ dlmp, p, rp ] = sqplab_solve_step_ls_direct( M, me, info, options )
          dlmp = (S*P) * (L'\(D\(L\( (P'*S) * b))));
      elseif (strcmp(options.stepMethod, 'block-decomposition'))
          [n, ~] = size(M);
-         [L, D] = symBlockDecomposition(A, n);
+         [L, D] = blockDecomposition(A, n);
          dlmp = L'\(D\(L\b));
      elseif (strcmp(options.stepMethod, 'ldl'))
          %tic;

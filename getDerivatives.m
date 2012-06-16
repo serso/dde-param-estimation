@@ -1,5 +1,5 @@
-function [xd, thetad] = getDerivatives(derivatives, Nx, p)
+function [xd, pd] = getDerivatives(derivatives, n, np)
     out = deal( derivatives );
-    xd = out(1:Nx);
-    thetad = out (Nx+1:Nx+p);
+    xd = out(1:n);
+    pd = out(n+1:n+np);
 end

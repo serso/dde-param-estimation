@@ -1,31 +1,40 @@
-function d = getDelays( delays, theta )
+function [delaysResult, ascDelays] = getDelays( delays, p )
 %GETDELAYS calculates effective delay values
 %
-%   [ci, ce, cij, cej] = GETDELAYS(delays, theta):
+%   [delaysResult, ascDelays] = GETDELAYS(delays, p):
 %   delays  vector of delays, e.g. [0, 1, 14, 25, -1, -2] where negative
 %   values are defined according to the next rule: if delays(i) is negative
-%   then effective i-th delay is theta(-delays(i)), i.e. delays(i) is
-%   negative index of delay represented by theta vector
-%   theta   auxiliary vector of delays
+%   then effective i-th delay is p(-delays(i)), i.e. delays(i) is
+%   negative index of delay represented by p vector
+%   p   auxiliary vector of delays
 
 if ( length(delays) < 1 )
     throw (MException ('ArgumentCheck:IllegalArgument', 'Delay vector must contain at least one element'));
 end
 
-d = zeros(length(delays), 1);
+ascDelays = true;
 
+delaysResult = zeros(length(delays), 1);
+
+prevDelay = -inf;
 i = 1;
 for delay = delays
     
     if ( delay < 0 )
-        d(i) = theta(-delay);
+        delaysResult(i) = p(-delay);
     else
-        d(i) = delay;
+        delaysResult(i) = delay;
     end
     
+    if ( prevDelay > delaysResult(i) )
+        ascDelays = false;
+    end
+    
+    % update step
+    prevDelay = delaysResult(i);
     i = i + 1;
 end
 
-d = d';
+delaysResult = delaysResult';
 
 end

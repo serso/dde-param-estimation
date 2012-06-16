@@ -1,9 +1,9 @@
-function getDelayIndeces_TEST( t, delays, theta, expected )
+function getDelayIndeces_TEST( t, delays, p, expected )
 %%
 
-actual = getDelayIndeces(t, delays, theta);
+actual = getDelayIndeces(t, delays, p);
 
-if ( actual ~= expected ) 
+if ( max(actual ~= expected) ) 
     display(actual);
     display(expected);
     throw (MException ('AssertionError:ConditionFailed', 'Expected result differes from actual!'));

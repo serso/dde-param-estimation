@@ -6,74 +6,6 @@ function ddeParamEst_TEST_SUITE()
 clc;
 close all;
 
-addpath('./sqp/src');
-addpath('./reduce');
-
-% %% SQP
-% 
-% optOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 3000);
-% optOptions = optimset(optOptions, 'DerivativeCheck', 'off');
-% optOptions = optimset(optOptions, 'FinDiffType', 'central');
-% 
-% %%
-% fg = @(x) 2 * x;
-% % fh = @(x) 2;
-% 
-% thetaLb = 2;
-% 
-% [xResult, xStepsResult] = sqp( 1, fg, fh, [], [], 10, optOptions, false, thetaLb, []);
-% 
-% display(xResult);
-% display(xStepsResult);
-% 
-% %%
-% 
-% fg = @(x) [   2 * x(1) + 1 ; ...
-%     2 * x(2) ];
-% 
-% fh = @(x) [   2,  0 ; ...
-%     0,  2 ];
-% 
-% [xResult, xStepsResult] = sqp( 2, fg, fh, [], [], [10; 10], optOptions, false, [], []);
-% 
-% display(xResult);
-% display(xStepsResult);
-% 
-% %%
-% 
-% fg = @(x) [   2 * x(1) ; ...
-%     2 * x(2) ];
-% 
-% fh = @(x) [   2,  0 ; ...
-%     0,  2 ];
-% 
-% c = @(x)    x(1) + x(2);
-% 
-% jc = @(x)   [  1, 1 ];
-% 
-% [xResult, xStepsResult] = sqp( 2, fg, fh, c, jc, [10; 10], optOptions, false, [], []);
-% 
-% display(xResult);
-% display(xStepsResult);
-% sqpoptOptions
-% %%
-% 
-% fg = @(x) [   2 * x(1) ; ...
-%     2 * x(2) ];
-% 
-% fh = @(x) [   2,  0 ; ...
-%     0,  2 ];
-% 
-% c = @(x)    1 / (x(1) + x(2)) - (x(1)^2 + x(2)^2);
-% 
-% jc = @(x)   [  - 1 / ( (x(1) + x(2)) * x(1) ) - 2 * x(1), - 1 / ( (x(1) + x(2)) * x(2) ) - 2 * x(2)];
-% 
-% [xResult, xStepsResult] = sqp( 2, fg, fh, c, jc, [10; 10], optOptions, false, [], []);
-% 
-% display(xResult);
-% display(xStepsResult);
-
-
 %% Parameter estimation in ODE
 
 clear;
@@ -81,39 +13,45 @@ clear;
 showResult = true;
 clearData = true;
 
-% methods = {'euler' 'backward_euler' 'box' 'rk4'};
+% methods = {'euler' 'backward-euler' 'box' 'rk4'};
 
 % number of known points (i.e. values of function x(t))
-N = 100;
+N = 200;
 
-xSigmaError = 0.02;
+xSigmaError = 0.01;
 tSigmaError = 0.0;
 
-options.xTol = 10^-2;
-options.thetaTol = 10^-2;
+options.xTol = 0.01;
+options.pTol = 0.01;
 
 %optOptions = optimset('Algorithm', 'sqp');
 optOptions = optimset('Algorithm', 'interior-point', 'MaxFunEvals', 6000);
 % optOptions = optimset(optOptions, 'SubproblemAlgorithm', 'cg');
 optOptions = optimset(optOptions, 'DerivativeCheck', 'off');
 optOptions = optimset(optOptions, 'FinDiffType', 'central');
-% optOptions = optimset(optOptions, 'Algorithm', 'sqp');
+%optOptions = optimset(optOptions, 'Algorithm', 'sqp');
 
 options.optOptions = optOptions;
 
 options.sqp = true;
 sqpOptions.miter = 30;
+
 options.hessian_method = 'gauss-newton';
 %options.hessian_method = 'newton';
-options.maxNumberOfIterations = 5;
 
-% sqpOptions.algo_method        = 'quasi-Newton';
+options.maxNumberOfIterations = 10;
+
+%sqpOptions.algo_method        = 'quasi-Newton';
 sqpOptions.algo_method        = 'Newton';
+
 sqpOptions.algo_globalization = 'line-search';
-% sqpOptions.algo_globalization = 'unit step-size';
-sqpOptions.stepMethodIterative = true;
-sqpOptions.stepMethod = 'bicg';
-sqpOptions.ldlsThreshold = 0.0001;
+%sqpOptions.algo_globalization = 'unit step-size';
+
+sqpOptions.stepMethodIterative = false;
+sqpOptions.stepMethod = 'ldls';
+%sqpOptions.stepMethod = 'bicg';
+%sqpOptions.stepMethod = 'block-decomposition';
+sqpOptions.ldlsThreshold = 0.001;
 sqpOptions.iterativeMaxit = 1000;
 sqpOptions.iterativePrecondAlgorithm = 'luinc';
 %sqpOptions.iterativePrecondAlgorithm = 'no';
@@ -121,18 +59,24 @@ sqpOptions.iterativePrecondAlgorithmThresh = 0.01;
 %sqpOptions.iterativePrecondAlgorithmThresh = 0.1;
 options.sqpOptions = sqpOptions;
 
+options.checkHessian = false;
+options.checkJacobian = false;
+
 %     sqpOptions.tol(1)  = tolopt(1);  % tolerance on the gradient of the Lagrangian
 %     sqpOptions.tol(2)  = tolopt(2);  % tolerance on the feasibility
 %     sqpOptions.tol(3)  = tolopt(3);  % tolerance on the complementarity
 
 % options.sqpOptions = sqpOptions;
 
-%method = 'backward_euler';
-options.method = 'backward_euler';
-% options.method = 'euler';
+options.method = 'backward-euler';
+%options.method = 'box';
+%options.method = 'euler';
 
 %options.method = method;
+options.debug = false; 
 options.showResult = showResult; 
+options.plotResult = showResult;
+options.plotExtResult = false;
 
 %% intial clear data
 
@@ -142,7 +86,8 @@ close all;
 
 % profile on;
 
-options.taskName = 'task_01';    
+optionsCopy = struct(options);
+optionsCopy.taskName = 'task-01';    
 
 if ( clearData )
     clc;    
@@ -152,23 +97,23 @@ end
 tMin = 0;
 tMax = 10;
 
-theta = 2;
+pSol = 2;
+optionsCopy.pSol = pSol;
 
-x_sol = @(t) theta - (theta - 1) * exp(-t);
+xSolH = @(t) pSol - (pSol - 1) * exp(-t);
 
-f = @(x, ~, theta) theta - x;
-
+f = @(x, ~, p) p - x;
 fg = @(~, ~, ~) [ -1, 1 ];
-fh = @(x, t, theta) [ 0, 0; 0 0];
+fh = @(x, t, p) [ 0, 0; 0 0];
 
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta, length(theta), xSigmaError, tSigmaError);
+    optionsCopy, xSigmaError, tSigmaError);
 
 % profile viewer;
 
@@ -178,43 +123,25 @@ ddeParamEst_TEST(...
 %'symamd'}
 
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
+    options, pSol,  xSigmaError, tSigmaError, [], [], [], ...
     {'fmincon', 'ldl', 'mldivide', 'bicg', 'cgs'} , ...
-    [50 100 500 1000, 5000]);
+    [100 500 1000]);
 
 %%
-
-clc;
-
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
+    options, pSol,  xSigmaError, tSigmaError, [], [], [], ...
     {'ldl'} , ...
     [50 100 250 500 750 1000 2500 4000 6000]);
-
-%%
-
-clc;
-
-compareTimes(tMin, tMax, ...
-    x_sol, ...
-    f, ...
-    fg, ...
-    fh, ...
-    0, [], [], ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
-    {'ldl'} , ...
-    [100]);
-
 
 %% 2
 
@@ -226,25 +153,25 @@ if ( clearData )
 end
 
 tMin = 0;
-tMax = 10;
+tMax = 6;
 
-theta = 2;      
+pSol = 2;      
 
-x_sol = @(t) theta - sin( t ) * exp(-t);
+xSolH = @(t) pSol - sin( t ) * exp(-t);
 
-f = @(x, t, theta) theta - x - exp( - t ) * cos (t);
+f = @(x, t, p) p - x - exp( - t ) * cos (t);
 
-fg = @(x, t, theta) [ -1, 1 ];
-fh = @(x, t, theta) [ 0, 0; 0 0];
+fg = @(x, t, p) [ -1, 1 ];
+fh = @(x, t, p) [ 0, 0; 0 0];
 
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta, length(theta), xSigmaError, tSigmaError);
+    options, xSigmaError, tSigmaError);
 
 %% 3
 
@@ -258,23 +185,23 @@ end
 tMin = 0.5;
 tMax = 10;
 
-theta = 2;
+pSol = 2;
 
-x_sol = @(t) theta * cos(t) / t;
+xSolH = @(t) pSol * cos(t) / t;
 
-f = @(x, t, theta) -( theta * sin (t) / t + x / t  );
+f = @(x, t, p) -( p * sin (t) / t + x / t  );
 
-fg = @(x, t, theta) [ -1/t, -sin(t)/t ];
-fh = @(x, t, theta) [ 0, 0; 0, 0];
+fg = @(x, t, p) [ -1/t, -sin(t)/t ];
+fh = @(x, t, p) [ 0, 0; 0, 0];
 
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta, length(theta), xSigmaError, tSigmaError);
+    options, xSigmaError, tSigmaError);
 
 %% 4
 
@@ -288,28 +215,30 @@ end
 tMin = 0;
 tMax = 10;
 
-theta = [ 4; 2];
+pSol = [ 4; 2];
 
-x_sol = @(t) theta(1) / theta(2) * ( 1 - exp( - theta(2) * t ));
+xSolH = @(t) pSol(1) / pSol(2) * ( 1 - exp( - pSol(2) * t ));
 
-f = @(x, t, theta) theta(1) - theta(2) * x;
+f = @(x, t, p) p(1) - p(2) * x;
 
-fg = @(x, t, theta) [ -theta(2), 1, -x ];
-fh = @(x, t, theta) [
+fg = @(x, t, p) [ -p(2), 1, -x ];
+fh = @(x, t, p) [
     0,  0, -1;
     0, 0, 0;
     -1, 0, 0];
 
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta, length(theta), xSigmaError, tSigmaError);
+    options, xSigmaError, tSigmaError);
 
 %% 5
+
+%profile on;
 
 options.taskName = 'task_05';
 
@@ -321,64 +250,105 @@ end
 tMin = 0;
 tMax = 10;
 
-theta = [ 2; 1; 1; 1];
-theta0 = [ 2.1; 0.9; 0.9; 1.2];
+pSol = [ 2; 1; 1; 1];
+p0 = [ 2.1; 0.9; 0.9; 1.1];
 
-thetaLb = [];%[ 0 0 0 0 ];
-thetaUb = [];%[ 8 5 5 5 ];
+pLb = [];%[ 0 0 0 0 ];
+pUb = [];%[ 8 5 5 5 ];
 %p = 4;
-%thetaUb = Inf * ones(p, 1);
-%thetaLb = - thetaUb;
+%pUb = Inf * ones(p, 1);
+%pLb = - pUb;
 
-x_sol = @(t) theta(1) - theta(2) * sin( theta(3) * t ) * exp (- theta(4) * t);
+xSolH = @(t) pSol(1) - pSol(2) * sin( pSol(3) * t ) * exp (- pSol(4) * t);
 
-f = @(x, t, theta) theta(4) * (theta(1) - x) - theta(2) * theta(3) * cos(theta(3) * t ) * exp( - theta(4) * t );
+%f = @(x, t, pSol) pSol(4) * (pSol(1) - x) - pSol(2) * pSol(3) * cos(pSol(3) * t ) * exp( - pSol(4) * t );
 
-fg = @(x, t, theta) [
-    -theta(4)
-    theta(4)
-    -theta(3) * cos(theta(3) * t ) * exp( - theta(4) * t )
-    -theta(2)  * exp( - theta(4) * t ) * (cos(theta(3) * t ) - theta(3) * sin(theta(3) * t) * t)
-    (theta(1) - x) + t * theta(2) * theta(3) * cos(theta(3) * t ) * exp( - theta(4) * t )];
+[f, fg, fh] = ddeParamEst_checkUserInput('p_4 * (p_1 - x) - p_2 * p_3 * cos( p_3 * t ) * exp( - p_4 * t )', length(pSol), [], []);
 
-x_th4 = @(x, t, theta) -1;
-th1_th4 = @(x, t, theta) 1;
-th2_th3 = @(x, t, theta) exp( - theta(4) * t) * (theta(3) * t * sin(theta(3) * t) - cos(theta(3) * t) );
-th2_th4 = @(x, t, theta) theta(3) * t * cos(theta(3) * t) * exp( - theta(4) * t);
-th3_th3 = @(x, t, theta) theta(2) * exp( - theta(4) * t) * t * ( 2 * sin(theta(3) * t) + theta(3) * t * cos(theta(3) * t));
-th3_th4 = @(x, t, theta) theta(2) * exp( - theta(4) * t) * t * ( cos(theta(3)) - theta(3) * t * sin(theta(3) * t));
-th4_th4 = @(x, t, theta) theta(2) * theta(3) * t * t * cos (theta(3) * t) * exp( - theta(4) * t);
-
-fh = @(x, t, theta) [
-    0,                  0,                      0,                      0,                      x_th4(x, t, theta);
-    0,                  0,                      0,                      0,                      th1_th4(x, t, theta);
-    0,                  0,                      0,                      th2_th3(x, t, theta),   th2_th4(x, t, theta);
-    0,                  0,                      th2_th3(x, t, theta),   th3_th3(x, t, theta),   th3_th4(x, t, theta);
-    x_th4(x, t, theta), th1_th4(x, t, theta),   th2_th4(x, t, theta),   th3_th4(x, t, theta),   th4_th4(x, t, theta);];
-
+% fg0 = @(x, t, theta_1, theta_2, theta_3, theta_4) [ -theta_4, theta_4, -(theta_3*cos(t*theta_3))/exp(t*theta_4), -(theta_3*cos(t*theta_3))/exp(t*theta_4), theta_1 - x + (t*theta_2*theta_3*cos(t*theta_3))/exp(t*theta_4)]';
+% fg = @(x, t, pSol) fg0(x, t, pSol(1), pSol(2), pSol(3), pSol(4)); 
+% 
+% fh0  = @(x, t, theta_1, theta_2, theta_3, theta_4) ...
+%       [  0, 0,                                         0,                                         0,                                                   -1;
+%          0, 0,                                         0,                                         0,                                                    1;
+%          0, 0,                                         0,                                         0,            (t*theta_3*cos(t*theta_3))/exp(t*theta_4);
+%          0, 0,                                         0,                                         0,            (t*theta_3*cos(t*theta_3))/exp(t*theta_4);
+%         -1, 1, (t*theta_3*cos(t*theta_3))/exp(t*theta_4), (t*theta_3*cos(t*theta_3))/exp(t*theta_4), -(t^2*theta_2*theta_3*cos(t*theta_3))/exp(t*theta_4)];
+% fh = @(x, t, pSol) fh0(x, t, pSol(1), pSol(2), pSol(3), pSol(4)); 
+%     
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb, theta0);
+    options, xSigmaError, tSigmaError, pLb, pUb, p0);
+
+%profile viewer;
 %%
 
 clc;
-
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
+    options, pSol,  xSigmaError, tSigmaError, [], [], [], ...
     {'ldl'} , ...
     [1000]);
 
+%% 5.5
+
+optionsCopy = struct(options);
+optionsCopy.taskName = 'task_05.5';
+optionsCopy.xTol = 10^-3;
+optionsCopy.plotExtResult = false;
+
+optionsCopy.hessian_method = 'newton';
+optionsCopy.method = 'backward-euler';
+%optionsCopy.method = 'euler';
+
+if ( clearData )
+    clc;
+    close all;
+end
+
+pSol = 1;
+optionsCopy.pSol = pSol;
+
+pUb = [];
+pLb = [];
+p0 = 0;
+%pUb = Inf * ones(p, 1);
+%pLb = - pUb;
+
+tMin = 0;
+tMax = 1;
+
+odeOptOptions = odeset('AbsTol', min([optionsCopy.xTol, optionsCopy.pTol]));
+odef = @(t, x, p) exp(x*p);
+odeSol = ode45(odef, [tMin, tMax], 0, odeOptOptions, pSol);
+xSolH = @(t) interp1(odeSol.x, odeSol.y, t, 'spline');
+
+[ f, fg, fh, fSym, fgSym fhSym] = ddeParamest_checkUserInput('exp(x*p_1)', 1, 0, []);
+pretty(fSym);
+pretty(fgSym);
+pretty(fhSym);
+
+ddeParamEst_TEST(...
+    N,  tMin, tMax, ...
+    xSolH, pSol,...
+    f, ...
+    fg, ...
+    fh, ...
+    0, xSolH, [], ...
+    optionsCopy, 0, tSigmaError, pLb, pUb, p0);
+
 %% 6
+
+% profile on;
 
 options.showResult = true;
 options.taskName = 'task_06';
@@ -388,65 +358,68 @@ if ( clearData )
     close all;
 end
 
-theta = 1;
+pSol = 1;
 
-tau = 6;
+tau = 2;
 
 tMin = -tau;
 tMax = 10;
 
-%thetaLb = 0;
-%thetaUb = 4;
-p = 1;
-thetaUb = [];
-thetaLb = [];
+pUb = [];
+pLb = [];
 
-x_sol = @(t) cos( theta * pi * t / ( 2 * tau));
+xSolH = @(t) cos( pSol * pi * t / ( 2 * tau));
 
-f = @(x, t, theta) ( - theta * pi / (2 * tau)) * x(2);
+%f = @(x, t, p) ( - p * pi / (2 * tau)) * x(2);
 
-delayF = []; %@(t) x_sol(theta, t);
+xHistory = @(t) xSolH(t);
 
+[f, fg, fh] = ddeParamEst_checkUserInput('( - p_1 * pi / (2 * tau)) * x_1', length(pSol), 1, {{'tau', tau}});
 
-fg = @(x, t, theta) [- theta * pi / (2 * tau), (- pi / (2 * tau)) * x(2)];
-
-fh = @(x, t, theta) [
-    0,                  - pi / (2 * tau); ...
-    - pi / (2 * tau),     0];
+% fg = @(x, t, p) [0, - p * pi / (2 * tau), (- pi / (2 * tau)) * x(2)];
+% 
+% fh = @(x, t, p) [
+%     0,                  - pi / (2 * tau); ...
+%     - pi / (2 * tau),     0];
 
 
 delays = [ 0 tau ];
 
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol, ...
     f, ...
     fg, ...
     fh, ...
-    delays, delayF, max(delays), ...
-    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb);
+    delays, xHistory, max(delays), ...
+    options, xSigmaError, tSigmaError, pLb, pUb);
+
+%profile viewer;
 %%
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
-    delays, delayF, max(delays), ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
+    delays, xHistory, max(delays), ...
+    options, pSol,  xSigmaError, tSigmaError, [], [], [], ...
     {'ldl', 'fmincon', 'bicg'} , ...
-    [50 100 500 1000 5000]);
+    [50 100 500 1000 2000 3000 5000 10000]);
 %%
 
 clc;
-
+optionsCopy = struct(options);
+optionsCopy.plotResult = false;
+optionsCopy.xTol = 0.01;
+optionsCopy.pTol = 0.01;
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
-    0, [], [], ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
-    {'ldl'} , ...
+    delays, xHistory, max(delays), ...
+    optionsCopy, pSol,  xSigmaError, tSigmaError, [], [], [], ...
+    {'ldl', 'bicg'} , ...
     [50 100 250 500 750 1000 2500 4000 6000]);
 
 %%
@@ -454,12 +427,12 @@ compareTimes(tMin, tMax, ...
 clc;
 
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
+    options, pSol,  xSigmaError, tSigmaError, [], [], [], ...
     {'ldl'} , ...
     [1000]);
 
@@ -471,7 +444,7 @@ if ( clearData )
     close all;
 end
 
-theta = 1;
+pSol = 1;
 k = 1;
 tau = pi / 2;
 b = 1;
@@ -480,34 +453,55 @@ tMin = -tau;
 tMax = 10;
 
 
-%thetaLb = 0;
-%thetaUb = 4;
-p = 1;
-thetaUb = Inf * ones(p, 1);
-thetaLb = - thetaUb;
+%pLb = 0;
+%pUb = 4;
 
-x_sol = @(t) b * sin ( k * theta * t ) - b * sin ( k * theta * tau ) / ( 1 - cos ( k * theta * tau )) * cos ( k * theta * t );
+xSolH = @(t) b * sin ( k * pSol * t ) - b * sin ( k * pSol * tau ) / ( 1 - cos ( k * pSol * tau )) * cos ( k * pSol * t );
 
-f = @(x, t, theta) - theta * k * x(2);
+xHistory = @(t) xSolH(t);
 
-delayF = []; %@(t) x_sol(theta, t);
-
-fg = @(x, t, theta) [- theta * k, - k * x(2)];
-
-fh = @(x, t, theta) [
-    0,       - k; ...
-    - k,     0];
+[f, fg, fh, fSym, fgSym, fhSym] = ddeParamEst_checkUserInput('- p_1 * k * x_1', length(pSol), 1, {{'k', k}});
+pretty(fSym);
+pretty(fgSym);
+pretty(fhSym);
 
 delays = [ 0 tau ];
 
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol,...
     f, ...
     fg, ...
     fh, ...
-    delays, delayF, max(delays), ...
-    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb);
+    delays, xHistory, max(delays), ...
+    options, xSigmaError, tSigmaError);
+%%
+clc;
+close all;
+
+optionsCopy = struct(options);
+optionsCopy.maxNumberOfIterations = 1;
+optionsCopy.plotResult = false;
+
+optionsCopy.sqpOptions = struct(options.sqpOptions);
+optionsCopy.sqpOptions.iterativeMaxit = 1000;
+optionsCopy.sqpOptions.stepMethodIterative = true;
+optionsCopy.sqpOptions.stepMethod = 'bicg';
+
+[t, ~, xWithErrors, deltaT, ~] = ...
+    ddeParamEst_createInitialGrid ( ...
+    xSolH, ...
+    1000, tMin, tMax, ...
+    xSigmaError, tSigmaError);
+
+for iterativePrecondAlgorithmThresh = [0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2]%[0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2 0.25 0.3 0.35 0.4 0.5]
+    
+    optionsCopy.sqpOptions.iterativePrecondAlgorithmThresh = iterativePrecondAlgorithmThresh;
+    fprintf('### luinc tolerance = %d', iterativePrecondAlgorithmThresh);
+    
+    ddeParamEst(t, xWithErrors, f, fg, fh, delays, xHistory, max(delays), optionsCopy, length(pSol), [], [], [], deltaT);    
+end
+
 %%
 clc;
 close all;
@@ -517,8 +511,8 @@ options.maxNumberOfIterations = 1;
 options.sqpOptions.iterativeMaxit = 1000;
 
 [t, ~, xWithErrors, deltaT, ~] = ...
-    createInitialGrid ( ...
-    x_sol, ...
+    ddeParamEst_createInitialGrid ( ...
+    xSolH, ...
     N, tMin, tMax, ...
     xSigmaError, tSigmaError);
 
@@ -527,113 +521,165 @@ for iterativePrecondAlgorithmThresh = [0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0
     options.sqpOptions.iterativePrecondAlgorithmThresh = iterativePrecondAlgorithmThresh;
     fprintf('### luinc tolerance = %d', iterativePrecondAlgorithmThresh);
     
-    ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
+    ddeParamEst(t, xWithErrors, f, fg, fh, delays, xHistory, max(delays), options, length(pSol), pLb, pUb, [], deltaT);
     close all;
     
 end
 options.maxNumberOfIterations = 20;
+%% 7.5
 
-%%
-clc;
-close all;
+optionsCopy = struct(options);
+optionsCopy.taskName = 'task_07.5';
+optionsCopy.xTol = 10^-3;
+optionsCopy.plotExtResult = false;
 
-N = 1000;
-options.maxNumberOfIterations = 1;
-options.sqpOptions.iterativeMaxit = 1000;
-
-[t, ~, xWithErrors, deltaT, ~] = ...
-    createInitialGrid ( ...
-    x_sol, ...
-    N, tMin, tMax, ...
-    xSigmaError, tSigmaError);
-
-for iterativePrecondAlgorithmThresh = [0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2]%[0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2 0.25 0.3 0.35 0.4 0.5]
-    
-    options.sqpOptions.iterativePrecondAlgorithmThresh = iterativePrecondAlgorithmThresh;
-    fprintf('### luinc tolerance = %d', iterativePrecondAlgorithmThresh);
-    
-    ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
-    close all;
-    
-end
-options.maxNumberOfIterations = 20;
-
-%% 8
-options.taskName = 'task_08';
-N = 1000;
-options.maxNumberOfIterations = 1;
-options.sqpOptions.ldlsThreshold = 0.000001;
+%options.hessian_method = 'gauss-newton';
+optionsCopy.hessian_method = 'newton';
+optionsCopy.checkJacobian = false;
+optionsCopy.checkHessian = true;
+optionsCopy.method = 'backward-euler';
+%optionsCopy.maxNumberOfIterations = 4;
+%options.sqpOptions.ldlsThreshold = 0.000001;
 
 if ( clearData )
     clc;
     close all;
 end
 
-theta = 1;
+pSol = 1;
+optionsCopy.pSol = pSol;
 
-thetaUb = [];
-thetaLb = [];
-%p = 1;
-%thetaUb = Inf * ones(p, 1);
-%thetaLb = - thetaUb;
+pUb = [];
+pLb = [];
+p0 = 1;
+%pUb = Inf * ones(p, 1);
+%pLb = - pUb;
 
-tau = 3;
+delays = [0 0.5 1.9];
+ddeDelays = delays(2:end);
+
+tMin = -max(delays);
+tMax = 1;
+
+ddef = @(t,y,Z,lambda) sin(y*Z(1)*Z(2)*lambda);
+ddeXHistory = @(t,lambda) t;
+ddeSol = dde23(ddef,ddeDelays,ddeXHistory,[tMin, tMax],[],pSol);
+
+xSolH = @(t) interp1(ddeSol.x, ddeSol.y, t, 'spline');
+
+[ f, fg, fh, fSym, fgSym fhSym] = ddeParamest_checkUserInput('sin(x*x_1*x_2*p_1)', 1, length(delays), []);
+pretty(fSym);
+pretty(fgSym);
+pretty(fhSym);
+
+ddeParamEst_TEST(...
+    N,  tMin, tMax, ...
+    xSolH, pSol,...
+    f, ...
+    fg, ...
+    fh, ...
+    delays, xSolH, max(delays), ...
+    optionsCopy, 0, tSigmaError, pLb, pUb, p0);
+
+%% 8
+
+optionsCopy = struct(options);
+optionsCopy.taskName = 'task_08';
+optionsCopy.xTol = 10^-1;
+%optionsCopy.maxNumberOfIterations = 4;
+%options.sqpOptions.ldlsThreshold = 0.000001;
+
+if ( clearData )
+    clc;
+    close all;
+end
+
+pSol = 2;
+optionsCopy.pSol = pSol;
+
+pUb = [];
+pLb = [];
+p0 = 0.5;
+%pUb = Inf * ones(p, 1);
+%pLb = - pUb;
+
+tau = 1;
 
 tMin = tau;
 tMax = 20;
 
 delays = [ 0 tau ];
 
-exampleF = @(t,y,Z,lambda) -lambda*Z*(1 + y);
-exampleDelayF = @(t,lambda) t;
-exampleSolution = dde23(exampleF,tau,exampleDelayF,[tMin - tau, tMax],[],theta);
+ddef = @(t,y,Z,lambda) -lambda*Z*(1 + y);
+ddeXHistory = @(t,lambda) t;
+ddeSol = dde23(ddef,tau,ddeXHistory,[tMin - tau, tMax],[],pSol);
 
-x_sol = @(t) interp1(exampleSolution.x, exampleSolution.y, t, 'spline');
-%x_sol = @(t) interp1q(exampleSolution.x', exampleSolution.y', t);
+xSolH = @(t) interp1(ddeSol.x, ddeSol.y, t, 'spline');
+%xSolH = @(t) interp1q(exampleSolution.x', exampleSolution.y', t);
 
-f = @(x, t, theta) -theta * x(2) * (1 + x(1));
-
-delayF = []; %@(t) t;
-
-fg = @(x, t, theta) [-theta - theta * 2 * x(2), -x(2) * (1 + x(1))];
-
-fh = @(x, t, theta) [
-    - theta * 2,   -1 - 2 * x(2); ...
-    -1 - 2 * x(2),           0];
+% f = @(x, t, pSol) -pSol * x(2) * (1 + x(1));
+% 
+% xHistory = []; %@(t) t;
+% 
+% fg = @(x, t, pSol) [- pSol * x(2), -pSol * ( 1 + x(1)), -x(2) * (1 + x(1))];
+% 
+% fh = @(x, t, pSol) [
+%     - pSol * 2,   -1 - 2 * x(2); ...
+%     -1 - 2 * x(2),           0];
+[ f, fg, fh, fSym, fgSym fhSym] = ddeParamest_checkUserInput('-p_1 *x_1 * (1 + x)', 1, 1, []);
+pretty(fSym);
+pretty(fgSym);
+pretty(fhSym);
+xHistory = [];
 
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol,...
     f, ...
     fg, ...
     fh, ...
-    delays, delayF, max(delays), ...
-    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb);
-
+    delays, xSolH, max(delays), ...
+    optionsCopy, xSigmaError, tSigmaError, pLb, pUb, p0);
+%%
+compareHMethodTimes(tMin, tMax, ...
+    xSolH, ...
+    f, ...
+    fg, ...
+    fh, ...
+    delays, xHistory, max(delays), ...
+    options, pSol,  xSigmaError, tSigmaError, pLb, pUb, p0, ...
+    {'newton', 'gauss-newton'} , ...
+    [300 450 800]);
 %%
 clc;
 close all;
 
-N = 1000;
-options.maxNumberOfIterations = 1;
+n = 1000;
+optionsCopy = struct(options);
+optionsCopy.sqpOptions = struct(options.sqpOptions);
+optionsCopy.maxNumberOfIterations = 3;
+optionsCopy.xTol = 0.01;
+optionsCopy.pTol = 0.01;
+optionsCopy.sqpOptions.stepMethodIterative = false;
+optionsCopy.sqpOptions.stepMethod = 'ldls';
 
 [t, ~, xWithErrors, deltaT, ~] = ...
-    createInitialGrid ( ...
-    x_sol, ...
-    N, tMin, tMax, ...
+    ddeParamEst_createInitialGrid ( ...
+    xSolH, ...
+    n, tMin, tMax, ...
     xSigmaError, tSigmaError);
 
 times = [];
-thetas = [];
+ps = [];
 ldlsThresholds = [0.000000001 0.00000001 0.0000001 0.000001 0.00001 0.0001 0.001 0.01 0.1 0.2 0.3 0.4 0.5];
 i = 1;
 for ldlsThreshold = ldlsThresholds
     
     timerId = tic;
-    options.sqpOptions.ldlsThreshold = ldlsThreshold;
+    optionsCopy.sqpOptions.ldlsThreshold = ldlsThreshold;
     fprintf('### LDL threshold = %d', ldlsThreshold);
     
-    [~, ~, thetas(i), ~, ~] = ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
+    [~, ps(i), ~] = ddeParamEst(t, xWithErrors, f, fg, fh, delays, xHistory, max(delays), optionsCopy, length(pSol), pLb, pUb, [], deltaT);
     close all;
     
     times(i) = toc(timerId);
@@ -642,8 +688,7 @@ for ldlsThreshold = ldlsThresholds
 end
 display(ldlsThresholds');
 display(times');
-display(thetas');
-options.maxNumberOfIterations = 20;
+display(ps');
 
 %%
 clc;
@@ -653,8 +698,8 @@ N = 1000;
 options.maxNumberOfIterations = 3;
 
 [t, ~, xWithErrors, deltaT, ~] = ...
-    createInitialGrid ( ...
-    x_sol, ...
+    ddeParamEst_createInitialGrid ( ...
+    xSolH, ...
     N, tMin, tMax, ...
     xSigmaError, tSigmaError);
 
@@ -668,7 +713,7 @@ for iterativeMaxit = maxits
     options.sqpOptions.iterativeMaxit = iterativeMaxit;
     fprintf('### max iterations in SQP step = %i', iterativeMaxit);
     
-    [~, ~, thetas(i), ~, ~] = ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
+    [~, ~, thetas(i), ~, ~] = ddeParamEst(t, xWithErrors, f, fg, fh, delays, xHistory, max(delays), options, length(pSol), pLb, pUb, [], deltaT);
     close all;
     
     times(i) = toc(timerId);
@@ -689,8 +734,8 @@ options.maxNumberOfIterations = 1;
 options.sqpOptions.iterativeMaxit = 1000;
 
 [t, ~, xWithErrors, deltaT, ~] = ...
-    createInitialGrid ( ...
-    x_sol, ...
+    ddeParamEst_createInitialGrid ( ...
+    xSolH, ...
     N, tMin, tMax, ...
     xSigmaError, tSigmaError);
 
@@ -699,7 +744,7 @@ for iterativePrecondAlgorithmThresh = [0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0
     options.sqpOptions.iterativePrecondAlgorithmThresh = iterativePrecondAlgorithmThresh;
     fprintf('### luinc tolerance = %d', iterativePrecondAlgorithmThresh);
     
-    ddeParamEst(t, xWithErrors, f, fg, fh, delays, delayF, max(delays), options, length(theta), thetaLb, thetaUb, [], deltaT);
+    ddeParamEst(t, xWithErrors, f, fg, fh, delays, xHistory, max(delays), options, length(pSol), pLb, pUb, [], deltaT);
     close all;
     
 end
@@ -707,12 +752,12 @@ options.maxNumberOfIterations = 20;
 
 %%
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
-    delays, delayF, max(delays), ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
+    delays, xHistory, max(delays), ...
+    options, pSol,  xSigmaError, tSigmaError, [], [], [], ...
     {'ldl', 'fmincon', 'bicg', 'cgs'} , ...
     [50 100 500 1000 5000]);
 %%
@@ -720,12 +765,12 @@ compareTimes(tMin, tMax, ...
 clc;
 
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
+    options, pSol,  xSigmaError, tSigmaError, [], [], [], ...
     {'ldl'} , ...
     [50 100 250 500 750 1000 2500 4000 6000]);
 
@@ -734,18 +779,18 @@ compareTimes(tMin, tMax, ...
 clc;
 
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
     0, [], [], ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
+    options, pSol,  xSigmaError, tSigmaError, [], [], [], ...
     {'ldl'} , ...
     [1000]);
 
 %% 9
-options.taskName = 'task_09';
-
+optionsCopy = struct(options);
+optionsCopy.taskName = 'task_09';
 if ( clearData )
     clc;
     close all;
@@ -753,16 +798,17 @@ end
 
 r = 3.5;
 m = 19;
-theta = [r; m];
+pSol = [r; m];
+optionsCopy.pSol = pSol;
 
-thetaLb = [];
-thetaUb = [];
+pLb = [];
+pUb = [];
 %p = 1;
-%thetaUb = Inf * ones(p, 1);
-%thetaLb = - thetaUb;
+%pUb = Inf * ones(p, 1);
+%pLb = - pUb;
 
 x0 = 19.001;
-theta0 = [3.4; 20];
+p0 = [3.45; 19.1];
 
 tau = 0.74;
 
@@ -771,46 +817,47 @@ tMax = 25;
 
 delays = [ 0 tau ];
 
-exampleoptOptions = ddeset('RelTol',1e-4,'AbsTol',1e-7,'InitialY', x0);
-exampleF = @(t,y,Z,r,m) r *y*(1 - Z/m);
-exampleDelayF = 19;
-exampleSolution = dde23(exampleF,tau,exampleDelayF,[tMin - tau, tMax],exampleoptOptions, theta(1), theta(2));
+ddeOptions = ddeset('RelTol',1e-4,'AbsTol',1e-7,'InitialY', x0);
+ddef = @(t, x, xLag, r, m) r * x * (1 - xLag / m);
+ddeXHistory = 19;
+ddeSol = dde23(ddef,tau,ddeXHistory,[tMin - tau, tMax],ddeOptions, pSol(1), pSol(2));
 
-x_sol = @(t) interp1(exampleSolution.x, exampleSolution.y, t, 'spline', 'extrap');
+xSolH = @(t) interp1(ddeSol.x, ddeSol.y, t, 'spline', 'extrap');
 
-f = @(x, t, theta) theta(1) * x(1) * ( 1 - x(2) / theta(2) );
-
-delayF = []; %@(t) 19;
-
-fg = @(x, t, theta) [ 
-        theta(1) * (1 - 2 * x(2)/ theta(2)), ...
-        x(1) * ( 1 + x(2) / theta(2) ) , ...
-        theta(1) * x(1) * x(2) / theta(2) ^ 2 ];
-
-fh = @(x, t, theta) [
-    0,                                  1 - x(2) / theta(2),            theta(1) * x(2) / theta(2) ^ 2; ...
-    1 - x(2) / theta(2),                0,                              - x(1) * x(2) / theta(2) ^ 2; ...
-    theta(1) * x(2) / theta(2) ^ 2,     - x(1) * x(2) / theta(2) ^ 2    -2 * theta(1) * x(1) * x(2)/ theta(2) ^ 3];
+xHistory = [];
+[f, fg, fh] = ddeParamEst_checkUserInput('p_1 * x * ( 1 - x_1 / p_2 )', 2, 1, []);
+% f = @(x, t, pSol) pSol(1) * x(1) * ( 1 - x(2) / pSol(2) );
+% 
+% fg = @(x, t, pSol) [ 
+%         pSol(1) * ( 1 - x(2) / pSol(2) ), ...
+%         - pSol(1) * x(1) / pSol(2), ...
+%         x(1) * ( 1 + x(2) / pSol(2) ) , ...
+%         pSol(1) * x(1) * x(2) / pSol(2) ^ 2 ];
+% 
+% fh = @(x, t, pSol) [
+%     0,                                  1 - x(2) / pSol(2),            pSol(1) * x(2) / pSol(2) ^ 2; ...
+%     1 - x(2) / pSol(2),                0,                              - x(1) * x(2) / pSol(2) ^ 2; ...
+%     pSol(1) * x(2) / pSol(2) ^ 2,     - x(1) * x(2) / pSol(2) ^ 2    -2 * pSol(1) * x(1) * x(2)/ pSol(2) ^ 3];
 
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol, ...
     f, ...
     fg, ...
     fh, ...
-    delays, delayF, max(delays), ...
-    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb, theta0);
+    delays, xHistory, max(delays), ...
+    optionsCopy, xSigmaError, tSigmaError, pLb, pUb, p0);
 
 %%
 compareTimes(tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     fh, ...
-    delays, delayF, max(delays), ...
-    options, theta,  xSigmaError, tSigmaError, [], [], [], ...
-    {'ldl', 'fmincon', 'bicg', 'cgs'} , ...
-    [50 100 500 1000 5000]);
+    delays, xHistory, max(delays), ...
+    options, pSol,  xSigmaError, tSigmaError, pLb, pUb, p0, ...
+    {'ldl', 'bicg', 'fmincon'} , ...
+    [100 500 1000]);
 
 %% 10
 options.taskName = 'task_10';
@@ -820,13 +867,13 @@ if ( clearData )
     close all;
 end
 
-theta = 3;
+pSol = 3;
 
-thetaUb = [];
-thetaLb = [];
+pUb = [];
+pLb = [];
 %p = 1;
-%thetaUb = Inf * ones(p, 1);
-%thetaLb = - thetaUb;
+%pUb = Inf * ones(p, 1);
+%pLb = - pUb;
 
 tau = 5;
 
@@ -836,35 +883,97 @@ tMax = 7;
 delays = [ 0 tau ];
 
 exampleoptOptions = ddeset('RelTol',1e-4,'AbsTol',1e-7);
-exampleF = @(t,y,Z, theta) theta * Z;
-exampleDelayF = @(t, theta) 2;
-exampleSolution = dde23(exampleF,tau,exampleDelayF,[tMin - tau, tMax],exampleoptOptions, theta);
+exampleF = @(t,y,Z, pSol) pSol * Z;
+exampleDelayF = @(t, pSol) 2;
+exampleSolution = dde23(exampleF,tau,exampleDelayF,[tMin - tau, tMax],exampleoptOptions, pSol);
 
-%x_sol = @(t) interp1q(exampleSolution.x', exampleSolution.y', t);
-x_sol = @(t) interp1(exampleSolution.x, exampleSolution.y, t, 'spline', 'extrap');
+%xSolH = @(t) interp1q(exampleSolution.x', exampleSolution.y', t);
+xSolH = @(t) interp1(exampleSolution.x, exampleSolution.y, t, 'spline', 'extrap');
 
-f = @(x, t, theta) theta * x(2);
+% f = @(x, t, pSol) pSol * x(2);
 
-delayF = [];...@(t) t;
+xHistory = [];
     
-fg = @(x, t, theta) [ theta, x(2) ];
+% fg = @(x, t, pSol) [ 0, pSol, x(2) ];
+% 
+% fh = @(x, t, pSol) [
+%     0,   1; ...
+%     1,           0];
 
-fh = @(x, t, theta) [
-    0,   1; ...
-    1,           0];
+[f, fg, fh] = ddeParamEst_checkUserInput('p_1 * x_1', 1, 1, []);
 
 ddeParamEst_TEST(...
     N, tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol, ...
     f, ...
     fg, ...
     fh, ...
-    delays, delayF, max(delays), ...
-    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb);
+    delays, xHistory, max(delays), ...
+    options, xSigmaError, tSigmaError, pLb, pUb);
+
+%% PRE 11
+
+r = 0.0257;
+k = 0.566;
+gamma = 1.623;
+pSol = [r; k; gamma];
+
+N0 = 1;
+Nc = 5.2;
+
+tau1 = 25;
+tau2 = 30;
+tau3 = 100;
+
+tMin = 1970;
+tMax = 2500;
+
+ddeDelays = [ tau1, tau2, tau3 ];
+
+ddeOptOptions = ddeset('RelTol',1e-7,'AbsTol',1e-10);
+
+ddeExp = @(delays, p) exp( - p(2) * ( delays(3) - N0 ) );
+
+K = @(delays, p) Nc + p(3) * (delays(2) - N0 ) * ddeExp(delays, p); 
+
+ddef = @(t, x, delays, p) p(1) * (delays(1) ^ 2) * ( 1 - x / K(delays, p) );
+ddeXHistory = @(t, pSol) (60100^2) * utils.arcctg((1995-t)/45) / (10^9);
+ddeSol = dde23(ddef, ddeDelays, ddeXHistory,[tMin - max(ddeDelays), tMax], ddeOptOptions, pSol);
+
+figure;
+hold on;
+grid on;
+plot (ddeSol.x, ddeSol.y);
 
 %% 11
 
-options.taskName = 'task_11';
+%N = 50;
+
+optionsCopy = struct(options);
+optionsCopy.taskName = 'task_11';
+optionsCopy.plotResult = true;
+optionsCopy.plotExtResult = true;
+%optionsCopy.checkHessian = true;
+%optionsCopy.hessian_method = 'gauss-newton';
+optionsCopy.hessian_method = 'newton';
+optionsCopy.sqpOptions = struct(optionsCopy.sqpOptions);
+optionsCopy.sqpOptions.stepMethodIterative = false;
+optionsCopy.sqpOptions.stepMethod = 'ldl';
+optionsCopy.sqpOptions.ldlsThreshold = 0.001;
+%sqpOptions.algo_method        = 'quasi-Newton';
+optionsCopy.sqpOptions.algo_method        = 'Newton';
+
+optionsCopy.sqpOptions.algo_globalization = 'line-search';
+%optionsCopy.sqpOptions.algo_globalization = 'unit step-size';
+
+%optionsCopy.sqpOptions.stepMethod = 'bicg';
+%optionsCopy.sqpOptions.iterativePrecondAlgorithmThresh = 0.0001;
+%optionsCopy.sqpOptions.miter = 3;
+
+
+optionsCopy.xTol = 10^-2;
+optionsCopy.pTol = 10^-1;
+
 
 if ( clearData )
     clc;
@@ -874,67 +983,96 @@ end
 r = 0.0257;
 k = 0.566;
 gamma = 1.623;
-theta = [r; k; gamma];
+pSol = [r; k; gamma];
+%p0 = 3 * [r; k; gamma];
+p0 = 1.2 * [r; k; gamma];
+optionsCopy.pSol = pSol;
 
 N0 = 1;
 Nc = 5.2;
 
-thetaLb = [];
-thetaUb = [];
-%p = length(theta);
-%thetaLb = -Inf * ones(p, 1);
-%thetaUb = - thetaLb;
+pLb = [];
+pUb = [];
+%p = length(pSol);
+%pLb = -2*p0;
+%pUb = - pLb;
 
 tau1 = 25;
 tau2 = 30;
 tau3 = 100;
 
-tMin = 0;
-tMax = 500;
+tMin = 1970;
+tMax = 2200;
+
+optionsCopy.extTMax = tMax + 500;
 
 ddeDelays = [ tau1, tau2, tau3 ];
 delays = [ 0, tau1, tau2, tau3 ];
 
-ddeoptOptions = ddeset('RelTol',1e-7,'AbsTol',1e-10);
+ddeOptOptions = ddeset('RelTol',1e-7,'AbsTol',1e-10);
 
-ddeExp = @(delays, theta) exp( - theta(2) * ( delays(3) - N0 ) );
+ddeExp = @(delays, p) exp( - p(2) * ( delays(3) - N0 ) );
 
-K = @(delays, theta) Nc + theta(3) * (delays(2) - N0 ) * ddeExp(delays, theta); 
+K = @(delays, p) Nc + p(3) * (delays(2) - N0 ) * ddeExp(delays, p); 
 
-ddeFunction = @(t, x, delays, theta) theta(1) * (delays(1) ^ 2) * ( 1 - x / K(delays, theta) );
-ddeDelayFunction = @(t, theta) 0.3;
-ddeSolution = dde23(ddeFunction, ddeDelays, ddeDelayFunction,[tMin - max(delays), tMax], ddeoptOptions, theta);
+ddef = @(t, x, delays, p) p(1) * (delays(1) ^ 2) * ( 1 - x / K(delays, p) );
 
-% plot (ddeSolution.x, ddeSolution.y);
+ddeXHistory = @(t, pSol) (62000^2) * utils.arcctg((2010-t)/45) / (10^9);
 
-%x_sol = @(t) interp1q(ddeSolution.x', ddeSolution.y', t);
-x_sol = @(t) interp1(ddeSolution.x, ddeSolution.y, t, 'spline', 'extrap');
+ddeSol = dde23(ddef, ddeDelays, ddeXHistory,[tMin - max(delays), tMax], ddeOptOptions, pSol);
 
-f = @(x, t, theta) ddeFunction(t, x(1), x(2:length(x)), theta);
+%plot (ddeSol.x, ddeSol.y);
 
-Kg_x = @(delays, theta) ddeExp(delays, theta) * theta(3) * (1 - N0 + theta(2) * delays(2));
-Kg_theta1 = @(delays, theta) 0;
-Kg_theta2 = @(delays, theta) - theta(3) * ( delays(2) - N0 ) * ddeExp(delays, theta) * (delays(3) - N0) ;
-Kg_theta3 = @(delays, theta) (delays(2) - N0) * ddeExp(delays, theta);
+%xSolH = @(t) interp1q(ddeSolution.x', ddeSolution.y', t);
+xSolH = @(t) interp1(ddeSol.x, ddeSol.y, t, 'spline', 'extrap');
 
-fg_x = @(x, delays, theta) delays(1) * ( 2 - ( ( ( 2 * x ) + delays(1) ) * K(delays, theta) - delays(1) * x * Kg_x(delays, theta) ) / K(delays, theta) ^ 2 );
-fg_theta1 = @(x, delays, theta) delays(1) ^ 2 * ( 1 - ( x*K(delays, theta) - theta(1)*x*Kg_theta1(delays, theta) ) / K(delays, theta) ^ 2 );
-fg_theta2 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta2(delays, theta)) / K(delays, theta) ^ 2;
-fg_theta3 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta3(delays, theta)) / K(delays, theta) ^ 2;
+pn = 3;
+xHistory = xSolH;
+userConstants = {{'Nc', Nc}, {'N0', N0}};
+K = 'Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
+[ f, fg, fh, fSym, fgSym fhSym] = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), pn, 3, userConstants);
 
-fg0 = @(t, x, delays, theta) [fg_x(x, delays, theta), fg_theta1(x, delays, theta), fg_theta2(x, delays, theta), fg_theta3(x, delays, theta)];
-fg = @(x, t, theta) fg0(t, x(1), x(2:length(x)), theta);
+pretty(fSym);
+pretty(fgSym);
+pretty(fhSym);
 
-delayF = [];...@(t) t;
-    
+
+xSigmaError = 0.0;
+tSigmaError = 0.0;
+
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, pSol,...
     f, ...
     fg, ...
-    [], ...
-    delays, delayF, max(delays), ...
-    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb);
+    fh, ...
+    delays, xHistory, max(delays), ...
+    optionsCopy, xSigmaError, tSigmaError, pLb, pUb, p0);
+%%
+compareTimes(tMin, tMax, ...
+    xSolH, ...
+    f, ...
+    fg, ...
+    fh, ...
+    delays, xHistory, max(delays), ...
+    optionsCopy, pSol,  xSigmaError, tSigmaError, [], [], p0, ...
+    {'ldl', 'fmincon', 'bicg'} , ...
+    [100 150 200]);
+
+%%
+
+%{'fmincon', 'default', 'symrcm', 'amd', 'colamd', 'colperm', 'dmperm',
+%'symamd'}
+
+compareTimes(tMin, tMax, ...
+    xSolH, ...
+    f, ...
+    fg, ...
+    fh, ...
+    delays, xHistory, max(delays), ...
+    optionsCopy, pSol,  xSigmaError, tSigmaError, [], [], p0, ...
+    {'fmincon', 'ldl', 'mldivide', 'bicg', 'cgs'} , ...
+    [100 150 200 250 300 400]);
 
 %% 12
 
@@ -959,13 +1097,13 @@ ddeTheta = [r; k; gamma; tau1; tau2; tau3];
 N0 = 1;
 Nc = 5.2;
 
-thetaLb = [];
-thetaUb = [];%[0.2, 1, 3, 26, 31, 101]
-%p = length(theta);
-%thetaLb = -Inf * ones(p, 1);
-%thetaUb = - thetaLb;
+pLb = [];
+pUb = [];%[0.2, 1, 3, 26, 31, 101]
+%p = length(pSol);
+%pLb = -Inf * ones(p, 1);
+%pUb = - pLb;
 
-theta = [r; k; gamma; tau1; tau2; tau3];
+pSol = [r; k; gamma; tau1; tau2; tau3];
 
 tMin = 1500;
 tMax = 2100;
@@ -975,44 +1113,44 @@ delays = [ 0, -4, -5, -6 ];
 
 ddeoptOptions = ddeset('RelTol',1e-7,'AbsTol',1e-10);
 
-ddeExp = @(delays, theta) exp( - theta(2) * ( delays(3) - N0 ) );
+ddeExp = @(delays, pSol) exp( - pSol(2) * ( delays(3) - N0 ) );
 
-K = @(delays, theta) Nc + theta(3) * (delays(2) - N0 ) * ddeExp(delays, theta);
+K = @(delays, pSol) Nc + pSol(3) * (delays(2) - N0 ) * ddeExp(delays, pSol);
 
-ddeFunction = @(t, x, delays, theta) theta(1) * (delays(1) ^ 2) * ( 1 - x / K(delays, theta) );
-ddeDelayFunction = @(t, theta) 200 / ( 2025 - t) ;
-ddeSolution = dde23(ddeFunction, ddeDelays, ddeDelayFunction,[tMin - max(getDelays(delays, theta)), tMax], ddeoptOptions, ddeTheta);
+ddeFunction = @(t, x, delays, pSol) pSol(1) * (delays(1) ^ 2) * ( 1 - x / K(delays, pSol) );
+ddeDelayFunction = @(t, pSol) 200 / ( 2025 - t) ;
+ddeSolution = dde23(ddeFunction, ddeDelays, ddeDelayFunction,[tMin - max(getDelays(delays, pSol)), tMax], ddeoptOptions, ddeTheta);
 
 %plot (ddeSolution.x, ddeSolution.y);
 
-%x_sol = @(t) interp1q(ddeSolution.x', ddeSolution.y', t);
-x_sol = @(t) interp1(ddeSolution.x, ddeSolution.y, t, 'spline', 'extrap');
+%xSolH = @(t) interp1q(ddeSolution.x', ddeSolution.y', t);
+xSolH = @(t) interp1(ddeSolution.x, ddeSolution.y, t, 'spline', 'extrap');
 
-f = @(x, t, theta) ddeFunction(t, x(1), x(2:length(x)), theta);
+f = @(x, t, pSol) ddeFunction(t, x(1), x(2:length(x)), pSol);
 
-Kg_x = @(delays, theta) ddeExp(delays, theta) * theta(3) * (1 - N0 + theta(2) * delays(2));
-Kg_theta1 = @(delays, theta) 0;
-Kg_theta2 = @(delays, theta) - theta(3) * ( delays(2) - N0 ) * ddeExp(delays, theta) * (delays(3) - N0) ;
-Kg_theta3 = @(delays, theta) (delays(2) - N0) * ddeExp(delays, theta);
+Kg_x = @(delays, pSol) ddeExp(delays, pSol) * pSol(3) * (1 - N0 + pSol(2) * delays(2));
+Kg_theta1 = @(delays, pSol) 0;
+Kg_theta2 = @(delays, pSol) - pSol(3) * ( delays(2) - N0 ) * ddeExp(delays, pSol) * (delays(3) - N0) ;
+Kg_theta3 = @(delays, pSol) (delays(2) - N0) * ddeExp(delays, pSol);
 
-fg_x = @(x, delays, theta) delays(1) * ( 2 - ( ( ( 2 * x ) + delays(1) ) * K(delays, theta) - delays(1) * x * Kg_x(delays, theta) ) / K(delays, theta) ^ 2 );
-fg_theta1 = @(x, delays, theta) delays(1) ^ 2 * ( 1 - ( x*K(delays, theta) - theta(1)*x*Kg_theta1(delays, theta) ) / K(delays, theta) ^ 2 );
-fg_theta2 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta2(delays, theta)) / K(delays, theta) ^ 2;
-fg_theta3 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta3(delays, theta)) / K(delays, theta) ^ 2;
+fg_x = @(x, delays, pSol) delays(1) * ( 2 - ( ( ( 2 * x ) + delays(1) ) * K(delays, pSol) - delays(1) * x * Kg_x(delays, pSol) ) / K(delays, pSol) ^ 2 );
+fg_theta1 = @(x, delays, pSol) delays(1) ^ 2 * ( 1 - ( x*K(delays, pSol) - pSol(1)*x*Kg_theta1(delays, pSol) ) / K(delays, pSol) ^ 2 );
+fg_theta2 = @(x, delays, pSol) (pSol(1) * delays(1) ^ 2 * x * Kg_theta2(delays, pSol)) / K(delays, pSol) ^ 2;
+fg_theta3 = @(x, delays, pSol) (pSol(1) * delays(1) ^ 2 * x * Kg_theta3(delays, pSol)) / K(delays, pSol) ^ 2;
 
-fg0 = @(t, x, delays, theta) [fg_x(x, delays, theta), fg_theta1(x, delays, theta), fg_theta2(x, delays, theta), fg_theta3(x, delays, theta)];
-fg = @(x, t, theta) fg0(t, x(1), x(2:length(x)), theta);
+fg0 = @(t, x, delays, pSol) [fg_x(x, delays, pSol), fg_theta1(x, delays, pSol), fg_theta2(x, delays, pSol), fg_theta3(x, delays, pSol)];
+fg = @(x, t, pSol) fg0(t, x(1), x(2:length(x)), pSol);
 
-delayF = [];...@(t) t;
+xHistory = @(t) (62000^2) * utils.arcctg((2010-t)/45) / (10^9);
     
 ddeParamEst_TEST(...
     N,  tMin, tMax, ...
-    x_sol, ...
+    xSolH, ...
     f, ...
     fg, ...
     [], ...
-    delays, delayF, max(thetaUb(1, 4:length(thetaUb))), ...
-    options, theta, length(theta), xSigmaError, tSigmaError, thetaLb, thetaUb);
+    delays, xHistory, max(pUb(1, 4:length(pUb))), ...
+    options, pSol, length(pSol), xSigmaError, tSigmaError, pLb, pUb);
 
 %% 13
 
@@ -1020,14 +1158,31 @@ ddeParamEst_TEST(...
 fileTaskName = 'population_china';
 fileName = strcat('input/', fileTaskName, '.csv');
 
-options.taskName = strcat('task_13_', fileTaskName);
+optionsCopy = struct(options);
+optionsCopy.sqpOptions = struct(options.sqpOptions);
+optionsCopy.taskName = strcat('task_13_', fileTaskName);
+optionsCopy.xTol = 0.01;
+optionsCopy.pTol = 0.1;
+%optionsCopy.method = 'euler';
+optionsCopy.method = 'backward-euler';
+%optionsCopy.hessian_method = 'gauss-newton';
+optionsCopy.hessian_method = 'newton';
+%optionsCopy.maxNumberOfIterations = 7;
+optionsCopy.sqp = true;
+optionsCopy.plotExtResult = true;
+optionsCopy.sqpOptions.stepMethodIterative = true;
+%optionsCopy.sqpOptions.stepMethod = 'ldl';
+optionsCopy.sqpOptions.stepMethod = 'bicg';
 
 input = csvread(fileName, 1, 0);
 
 [N, ~] = size(input);
 
-tInput = input(1:N,1);
-xInput = input(1:N,2) / 10 ^ 6;
+optionsCopy.extTMax = input(end, 1) + 200;
+
+from = find(input(1:end,1) == 1870);
+tInput = input(from:N,1);
+xInput = input(from:N,2) / 10 ^ 6;
 
 if ( clearData )
     clc;
@@ -1037,76 +1192,397 @@ end
 r = 0.0257;
 k = 0.566;
 gamma = 1.623;
-theta0 = [r; k; gamma];
+p0 = [r; k; gamma];
+
+pSol = 10^2 * [0.001029007623221;
+    0.346070601572724;
+    1.525424216294689];
+optionsCopy.pSol = pSol;
+
 
 N0 = 0.23;
 Nc = 1.2;
 
-thetaLb = [];
-thetaUb = [];
-%p = length(theta);
-%thetaLb = -Inf * ones(p, 1);
-%thetaUb = - thetaLb;
+pLb = [];
+pUb = [];
+%p = length(pSol);
+%pLb = -Inf * ones(p, 1);
+%pUb = - pLb;
 
 tau1 = 25;
 tau2 = 30;
 tau3 = 100;
 
-
-ddeExp = @(delays, theta) exp( - theta(2) * ( delays(3) - N0 ) );
-
 delays = [ 0, tau1, tau2, tau3 ];
 
-N1 = @(delays, theta) theta(3) * (delays(2) - N0 );
-N2 = @(delays, theta) exp( - theta(2) * ( delays(3) - N0 ) );
-K = @(delays, theta) Nc + N1(delays, theta) * N2(delays, theta);
+pn = length(p0);
+userConstants = {{'Nc', Nc}, {'N0', N0}};
+K = 'Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
+[ f, fg, fh ] = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), pn, 3, userConstants);
 
-ddeFunction = @(t, x, delays, theta) theta(1) * (delays(1) ^ 2) * ( 1 - x / K(delays, theta) );
-
-f = @(x, t, theta) ddeFunction(t, x(1), x(2:length(x)), theta);
-
-Kg_x = @(delays, theta) N2(delays, theta) * theta(3) * (1 - theta(2) * (delays(2) - N0) );
-% Kg_theta1 = @(delays, theta) 0;
-Kg_theta2 = @(delays, theta) - N1(delays, theta) * N2(delays, theta) * (delays(2) - N0) ;
-Kg_theta3 = @(delays, theta) (delays(2) - N0) * N2(delays, theta);
-
-fg_x = @(x, delays, theta) delays(1) * ( 2 - ( ( ( 2 * x ) + delays(1) ) * K(delays, theta) - delays(1) * x * Kg_x(delays, theta) ) / K(delays, theta) ^ 2 );
-fg_theta1 = @(x, delays, theta) delays(1) ^ 2 * ( 1 - x/K(delays, theta));
-fg_theta2 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta2(delays, theta)) / K(delays, theta) ^ 2;
-fg_theta3 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta3(delays, theta)) / K(delays, theta) ^ 2;
-
-fg0 = @(t, x, delays, theta) [fg_x(x, delays, theta), fg_theta1(x, delays, theta), fg_theta2(x, delays, theta), fg_theta3(x, delays, theta)];
-fg = @(x, t, theta) fg0(t, x(1), x(2:length(x)), theta);
-
-delayF = [];...@(t) t;
+xHistory = [];%@(t) interp1(input(1:from,1), input(1:from,2) / 10^6, t, 'spline', 'extrap');%@(t) (62000^2) * utils.arcctg((2010-t)/45) / (10^9) / 6;
     
-[~, ~, thetaResult]=ddeParamEst(...
+ddeParamEst(...
     tInput, xInput, ...
     f, ...
     fg, ...
-    [], ...
-    delays, delayF, max(delays), ...
-    options, length(theta0), thetaLb, thetaUb, theta0, []);
+    fh, ...
+    delays, xHistory, max(delays), ...
+    optionsCopy, pn, pLb, pUb, p0);
 
-h = plot(tInput, xInput, 'xr');
-saveas(h, strcat('output/', options.taskName, '_result'), 'png'); 
+% saveas(h, strcat('output/', options.taskName, '_result'), 'png'); 
 
-save(strcat('output/', taskName, '.txt'), 'thetaResult', '-ascii');
+% save(strcat('output/', taskName, '.txt'), 'thetaResult', '-ascii');
 
 %% 14
 
-fileTaskName = 'reduced2_population_china';
-% fileTaskName = 'reduced2_population_india';
+%fileTaskName = 'reduced2_population_japan';
+%fileTaskName = 'reduced2_population_india';
+%fileTaskName = 'reduced2_population_china_mod';
+%fileTaskName = 'reduced2_population_china';
+%fileTaskName = 'reduced_population_china';
+fileTaskName = 'reduced_population_india';
 fileName = strcat('input/', fileTaskName, '.csv');
 
-options.taskName = strcat('task_14_', fileTaskName);
+optionsCopy = struct(options);
+optionsCopy.sqpOptions = struct(options.sqpOptions);
+optionsCopy.taskName = strcat('task_14_', fileTaskName);
+optionsCopy.xTol = 0.001;
+optionsCopy.pTol = 0.01;
+optionsCopy.maxNumberOfIterations = 7;
+optionsCopy.method = 'backward-euler';
+optionsCopy.hessian_method = 'gauss-newton';
+%optionsCopy.hessian_method = 'newton';
+optionsCopy.sqp = true;
+optionsCopy.plotExtResult = true;
+optionsCopy.sqpOptions.stepMethodIterative = false;
+optionsCopy.sqpOptions.stepMethod = 'ldls';
+%optionsCopy.sqpOptions.stepMethod = 'bicgstab';
+optionsCopy.sqpOptions.iterativePrecondAlgorithmThresh = 0.0001;
+
 
 input = csvread(fileName, 1, 0);
 
 [N, ~] = size(input);
 
-tInput = input(1:N,1);
-xInput = input(1:N,2) / 10^6;
+m = 10^6;
+
+optionsCopy.extTMax = input(end, 1) + 500;
+
+from = find(input(1:end,1)==1870);
+tInput = input(from:N,1);
+xInput = input(from:N,2) / m;
+% plot(tInput, xInput);
+
+if ( clearData )
+    clc;
+    close all;
+end
+
+error = 0.5 * rand(3,1) - 0.5 / 2;
+
+r = 0.243851567239265;
+k = 1.096553138392189;
+gamma = 0.765837675938692;
+pSol = [r; k; gamma];
+p0 = [r + r * error(1); k + r * error(2); gamma + r * error(3)];
+p0 = [1; 1; 1];
+
+
+N0 = 0.18 * (10 ^ 6) / m;
+%N0 = 0.18 * 1.2 / 0.98 * (10 ^ 6) / m;
+Nc = 0.98 * (10 ^ 6) / m;
+%Nc = 1.2 * (10 ^ 6) / m;
+
+pLb = [];
+pUb = [];
+
+tau1 = 25;
+tau2 = 30;
+tau3 = 100;
+
+delays = [ 0, tau1, tau2, tau3 ];
+
+pn = length(p0);
+userConstants = {{'Nc', Nc}, {'N0', N0}};
+K = 'Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
+[ f, fg, fh ] = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), pn, 3, userConstants);
+
+[~, ~, ~] = ddeParamEst(...
+    tInput, xInput, ...
+    f, ...
+    fg, ...
+    fh, ...
+    delays, [], max(delays), ...
+    optionsCopy, pn, pLb, pUb, p0);
+
+% saveas(h, strcat('output/', options.taskName, '_result'), 'png');
+% 
+% save(strcat('output/', options.taskName, '.txt'), 'thetaResult', '-ascii');
+
+%% 14.1
+
+%fileTaskName = 'reduced2_population_japan';
+%fileTaskName = 'reduced2_population_india';
+%fileTaskName = 'reduced2_population_china_mod';
+fileTaskName = 'reduced_population_china';
+fileName = strcat('input/', fileTaskName, '.csv');
+
+optionsCopy = struct(options);
+optionsCopy.sqpOptions = struct(options.sqpOptions);
+optionsCopy.taskName = strcat('task-14.1-', fileTaskName);
+optionsCopy.xTol = 0.0001;
+optionsCopy.pTol = 0.01;
+%optionsCopy.maxNumberOfIterations = 7;
+optionsCopy.method = 'backward-euler';
+optionsCopy.hessian_method = 'gauss-newton';
+optionsCopy.sqp = true;
+optionsCopy.plotExtResult = true;
+optionsCopy.sqpOptions.stepMethodIterative = false;
+optionsCopy.sqpOptions.stepMethod = 'ldls';
+%optionsCopy.sqpOptions.stepMethod = 'bicg';
+
+input = csvread(fileName, 1, 0);
+
+[N, ~] = size(input);
+
+m = 10^6;
+
+optionsCopy.extTMax = input(end, 1) + 500;
+
+from = find(input(1:end,1)==1871);
+tInput = input(from:N,1);
+xInput = input(from:N,2) / m;
+
+if ( clearData )
+    clc;
+    close all;
+end
+
+r = 0.218687133409019;
+k = 4.787953025884243;
+gamma = 1.623;
+pSol = [r; k];
+p0 = 5 * [r; k];
+
+N0 = 0.18 * (10 ^ 6) / m;
+Nc = 0.98 * (10 ^ 6) / m;
+
+pLb = [];
+pUb = [];
+
+tau1 = 25;
+tau2 = 30;
+tau3 = 100;
+
+delays = [ 0, tau1, tau2, tau3 ];
+
+pn = length(p0);
+userConstants = {{'Nc', Nc}, {'N0', N0}, {'g', gamma}};
+K = 'Nc + g * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
+[ f, fg, fh ] = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), pn, 3, userConstants);
+
+[~, ~, ~] = ddeParamEst(...
+    tInput, xInput, ...
+    f, ...
+    fg, ...
+    fh, ...
+    delays, [], max(delays), ...
+    optionsCopy, pn, pLb, pUb, p0);
+
+% saveas(h, strcat('output/', options.taskName, '_result'), 'png');
+% 
+% save(strcat('output/', options.taskName, '.txt'), 'thetaResult', '-ascii');
+
+%% 14.2
+
+fileTaskName = 'population_world';
+fileName = strcat('input/', fileTaskName, '.csv');
+
+optionsCopy = struct(options);
+optionsCopy.sqpOptions = struct(options.sqpOptions);
+optionsCopy.taskName = strcat('task-14.2-', fileTaskName);
+optionsCopy.xTol = 0.001;
+optionsCopy.pTol = 0.01;
+%optionsCopy.maxNumberOfIterations = 7;
+optionsCopy.method = 'backward-euler';
+optionsCopy.hessian_method = 'gauss-newton';
+%optionsCopy.hessian_method = 'newton';
+optionsCopy.sqp = true;
+optionsCopy.plotExtResult = true;
+optionsCopy.sqpOptions.stepMethodIterative = false;
+optionsCopy.sqpOptions.stepMethod = 'ldls';
+%optionsCopy.sqpOptions.stepMethod = 'gmres';
+%optionsCopy.sqpOptions.stepMethod = 'qmr';
+%optionsCopy.sqpOptions.stepMethod = 'bicg';
+%optionsCopy.sqpOptions.stepMethod = 'bicgstab';
+optionsCopy.sqpOptions.iterativePrecondAlgorithmThresh = 0.01;
+
+optionsCopy.sqpOptions.ldlsThreshold = 0.01;
+
+
+input = csvread(fileName, 1, 0);
+
+[N, ~] = size(input);
+
+m = 10^6;
+
+optionsCopy.extTMax = input(end, 1) + 200;
+
+from = find(input(1:end,1)==1870);
+tInput = input(from:N,1);
+xInput = input(from:N,2) / m;
+% plot(tInput, xInput);
+
+if ( clearData )
+    clc;
+    close all;
+end
+
+error = zeros(3, 1);%0.5 * rand(3,1) - 0.5 / 2;
+
+r = 0.018020578445818;
+k = 2.256460994461019;
+gamma = 4.574770144705490;
+pSol = [r; k; gamma];
+p0 = [r + r * error(1); k + k * error(2); gamma + gamma * error(3)];
+
+
+N0 = 1 * (10 ^ 6) / m;
+%N0 = 0.18 * 1.2 / 0.98 * (10 ^ 6) / m;
+%{4; 4.5; 5; 6.5; 7; 10.5 }
+Nc = 9 * (10 ^ 6) / m;
+%Nc = 1.2 * (10 ^ 6) / m;
+
+pLb = [];
+pUb = [];
+
+tau1 = 25;
+tau2 = 30;
+tau3 = 100;
+
+delays = [ 0, tau1, tau2, tau3 ];
+
+pn = length(p0);
+userConstants = {{'Nc', Nc}, {'N0', N0}};
+K = 'Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
+[ f, fg, fh ] = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), pn, 3, userConstants);
+
+xHistory = [];%@(t, pSol) utils.populationKapitsa(t);
+
+[~, ~, ~] = ddeParamEst(...
+    tInput, xInput, ...
+    f, ...
+    fg, ...
+    fh, ...
+    delays, xHistory, max(delays), ...
+    optionsCopy, pn, pLb, pUb, p0);
+
+% saveas(h, strcat('output/', options.taskName, '_result'), 'png');
+% 
+% save(strcat('output/', options.taskName, '.txt'), 'thetaResult', '-ascii');
+%%
+optionsCopy.plotExtResult = false;
+optionsCopy.plotResult = false;
+for ldlThresh = [0.0001 0.001 0.01 0.02 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2]
+    
+    optionsCopy.sqpOptions.ldlsThreshold = ldlThresh;
+    fprintf('### ldl thresh = %d', ldlThresh);
+    
+    [~, ~, ~] = ddeParamEst(...
+        tInput, xInput, ...
+        f, ...
+        fg, ...
+        fh, ...
+        delays, xHistory, max(delays), ...
+        optionsCopy, pn, pLb, pUb, p0);
+    
+end
+
+
+%% 14.3
+
+fileTaskName = 'population_world';
+fileName = strcat('input/', fileTaskName, '.csv');
+
+optionsCopy = struct(options);
+optionsCopy.sqpOptions = struct(options.sqpOptions);
+optionsCopy.taskName = strcat('task-14.2-', fileTaskName);
+optionsCopy.xTol = 0.0001;
+optionsCopy.pTol = 0.001;
+%optionsCopy.maxNumberOfIterations = 7;
+optionsCopy.method = 'backward-euler';
+optionsCopy.hessian_method = 'gauss-newton';
+%optionsCopy.hessian_method = 'newton';
+optionsCopy.sqp = true;
+optionsCopy.plotExtResult = true;
+optionsCopy.sqpOptions.stepMethodIterative = false;
+optionsCopy.sqpOptions.stepMethod = 'ldl';
+%optionsCopy.sqpOptions.stepMethod = 'gmres';
+%optionsCopy.sqpOptions.stepMethod = 'bicgstab';
+%optionsCopy.sqpOptions.stepMethod = 'bicg';
+
+input = csvread(fileName, 1, 0);
+
+[N, ~] = size(input);
+
+m = 10^6;
+
+optionsCopy.extTMax = input(end, 1) + 500;
+
+from = find(input(1:end,1)==1870);
+tInput = input(from:N,1);
+xInput = input(from:N,2) / m;
+% plot(tInput, xInput);
+
+if ( clearData )
+    clc;
+    close all;
+end
+
+error = zeros(3, 1);%0.5 * rand(3,1) - 0.5 / 2;
+
+r = 0.018020578445818;
+k = 2.256460994461019;
+gamma = 1.623;
+pSol = [r; k];
+p0 = [r + r * error(1); k + k * error(2)];
+
+
+N0 = 1 * (10 ^ 6) / m;
+%N0 = 0.18 * 1.2 / 0.98 * (10 ^ 6) / m;
+%{4; 4.5; 5; 6.5; 7; 10.5 }
+Nc = 9 * (10 ^ 6) / m;
+%Nc = 1.2 * (10 ^ 6) / m;
+
+pLb = [];
+pUb = [];
+
+tau1 = 25;
+tau2 = 30;
+tau3 = 100;
+
+delays = [ 0, tau1, tau2, tau3 ];
+
+pn = length(p0);
+userConstants = {{'Nc', Nc}, {'N0', N0}, {'g', gamma}};
+K = 'Nc + g * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
+[ f, fg, fh ] = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), pn, 3, userConstants);
+
+xHistory = [];%@(t, pSol) utils.populationKapitsa(t);
+
+[~, ~, ~] = ddeParamEst(...
+    tInput, xInput, ...
+    f, ...
+    fg, ...
+    fh, ...
+    delays, xHistory, max(delays), ...
+    optionsCopy, pn, pLb, pUb, p0);
+
+% saveas(h, strcat('output/', options.taskName, '_result'), 'png');
+% 
+% save(strcat('output/', options.taskName, '.txt'), 'thetaResult', '-ascii');
+%%
 
 if ( clearData )
     clc;
@@ -1116,60 +1592,42 @@ end
 r = 0.0257;
 k = 0.566;
 gamma = 1.623;
-theta0 = [r; k; gamma];
+pSol = [r; k; gamma];
 
-N0 = 0.18;
-Nc = 0.98;
-
-thetaLb = [];
-thetaUb = [];
-%p = length(theta);
-%thetaLb = -Inf * ones(p, 1);
-%thetaUb = - thetaLb;
+N0 = 0.18 * (10 ^ 6) / m;
+Nc = 0.98 * (10 ^ 6) / m;
 
 tau1 = 25;
 tau2 = 30;
 tau3 = 100;
 
 delays = [ 0, tau1, tau2, tau3 ];
+ndelays = length(delays);
+
+pn = length(pSol);
+userConstants = {{'Nc', Nc}, {'N0', N0}};
+K = 'Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
+f = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), pn, ndelays, userConstants);
+% p_1 * (x_1 ^ 2) * (  1 - x / (Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) ))  )
 
 
-N1 = @(delays, theta) theta(3) * (delays(2) - N0 );
-N2 = @(delays, theta) exp( - theta(2) * ( delays(3) - N0 ) );
-K = @(delays, theta) Nc + N1(delays, theta) * N2(delays, theta);
+tSpan = [1870, 2500];
 
-ddeFunction = @(t, x, delays, theta) theta(1) * (delays(1) ^ 2) * ( 1 - x / K(delays, theta) );
+% prepare DDE input data
+ddeOptOptions = ddeset('AbsTol', min([options.xTol, options.pTol]));
 
-f = @(x, t, theta) ddeFunction(t, x(1), x(2:length(x)), theta);
+% convert ddeParamEst input to dde23 input
+ddeF = @(t, x, delays, p) f([x delays]', t, p);
 
-Kg_x = @(delays, theta) N2(delays, theta) * theta(3) * (1 - theta(2) * (delays(2) - N0) );
-% Kg_theta1 = @(delays, theta) 0;
-Kg_theta2 = @(delays, theta) - N1(delays, theta) * N2(delays, theta) * (delays(2) - N0) ;
-Kg_theta3 = @(delays, theta) (delays(2) - N0) * N2(delays, theta);
+ddeXHistory = @(t, pSol) utils.populationKapitsa(t);
 
-fg_x = @(x, delays, theta) delays(1) * ( 2 - ( ( ( 2 * x ) + delays(1) ) * K(delays, theta) - delays(1) * x * Kg_x(delays, theta) ) / K(delays, theta) ^ 2 );
-fg_theta1 = @(x, delays, theta) delays(1) ^ 2 * ( 1 - x/K(delays, theta));
-fg_theta2 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta2(delays, theta)) / K(delays, theta) ^ 2;
-fg_theta3 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta3(delays, theta)) / K(delays, theta) ^ 2;
+% do extrapolation
+xdeResult = dde23(ddeF, delays(2:end), ddeXHistory, tSpan, ddeOptOptions, pSol);
 
-fg0 = @(t, x, delays, theta) [fg_x(x, delays, theta), fg_theta1(x, delays, theta), fg_theta2(x, delays, theta), fg_theta3(x, delays, theta)];
-fg = @(x, t, theta) fg0(t, x(1), x(2:length(x)), theta);
+t = linspace(tSpan(1), tSpan(2), 1000);
+x = deval(xdeResult, t);
 
-delayF = [];...@(t) t;
-    
-[~, ~, thetaResult]=ddeParamEst(...
-    tInput, xInput, ...
-    f, ...
-    fg, ...
-    [], ...
-    delays, delayF, max(delays), ...
-    options, length(theta0), thetaLb, thetaUb, theta0, []);
-
-h = plot(tInput, xInput, 'xr');
-saveas(h, strcat('output/', options.taskName, '_result'), 'png');
-
-save(strcat('output/', options.taskName, '.txt'), 'thetaResult', '-ascii');
-
+plot (t, x, '-g');
 %% 15
 
 fileTaskName = 'reduced2_population_china';
@@ -1197,46 +1655,22 @@ tau3 = 100;
 N0 = 0.23;
 Nc = 1.2;
 
-theta0 = [];
-thetaLb = [];
-thetaUb = [];
-%p = length(theta);
-%thetaLb = -Inf * ones(p, 1);
-%thetaUb = - thetaLb;
-
-theta = [r; k; gamma; tau1; tau2; tau3];
-
 delays = [ 0, -4, -5, -6 ];
-N1 = @(delays, theta) theta(3) * (delays(2) - N0 );
-N2 = @(delays, theta) exp( - theta(2) * ( delays(3) - N0 ) );
-K = @(delays, theta) Nc + N1(delays, theta) * N2(delays, theta);
 
-ddeFunction = @(t, x, delays, theta) theta(1) * (delays(1) ^ 2) * ( 1 - x / K(delays, theta) );
+pn = 6;
+userConstants = {{'Nc', Nc}, {'N0', N0}};
+K = 'Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
+[ f, fg, ~ ] = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), 3, 3, userConstants);
 
-f = @(x, t, theta) ddeFunction(t, x(1), x(2:length(x)), theta);
-
-Kg_x = @(delays, theta) N2(delays, theta) * theta(3) * (1 - theta(2) * (delays(2) - N0) );
-% Kg_theta1 = @(delays, theta) 0;
-Kg_theta2 = @(delays, theta) - N1(delays, theta) * N2(delays, theta) * (delays(2) - N0) ;
-Kg_theta3 = @(delays, theta) (delays(2) - N0) * N2(delays, theta);
-
-fg_x = @(x, delays, theta) delays(1) * ( 2 - ( ( ( 2 * x ) + delays(1) ) * K(delays, theta) - delays(1) * x * Kg_x(delays, theta) ) / K(delays, theta) ^ 2 );
-fg_theta1 = @(x, delays, theta) delays(1) ^ 2 * ( 1 - x/K(delays, theta));
-fg_theta2 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta2(delays, theta)) / K(delays, theta) ^ 2;
-fg_theta3 = @(x, delays, theta) (theta(1) * delays(1) ^ 2 * x * Kg_theta3(delays, theta)) / K(delays, theta) ^ 2;
-
-fg0 = @(t, x, delays, theta) [fg_x(x, delays, theta), fg_theta1(x, delays, theta), fg_theta2(x, delays, theta), fg_theta3(x, delays, theta), 0, 0, 0];
-fg = @(x, t, theta) fg0(t, x(1), x(2:length(x)), theta);
-
-delayF = [];...@(t) t;
+xHistory = [];
     
 ddeParamEst(...
     tInput, xInput, ...
     f, ...
     fg, ...
     [], ...
-    delays, delayF, max([tau1, tau2, tau3]), ...
-    options, length(theta), thetaLb, thetaUb, theta0, []);
+    delays, xHistory, max([tau1, tau2, tau3]), ...
+    options, 6);
 
 
 end

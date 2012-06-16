@@ -1,0 +1,148 @@
+
+######Starting ddeParamEst with next initial parameters: 
+options = 
+
+                      xTol: 1.000000000000000e-03
+                      pTol: 0.010000000000000
+                optOptions: [1x1 struct]
+                       sqp: 1
+            hessian_method: 'gauss-newton'
+     maxNumberOfIterations: 7
+                sqpOptions: [1x1 struct]
+              checkHessian: 0
+             checkJacobian: 0
+                    method: 'backward-euler'
+                     debug: 0
+                showResult: 1
+                plotResult: 1
+             plotExtResult: 1
+                  taskName: 'task_14_reduced_population_india'
+                   extTMax: 2509
+    showIntermidiateResult: 0
+                      pSol: []
+         maxApproximationN: 20000
+
+                              miter: 30
+                        algo_method: 'Newton'
+                 algo_globalization: 'line-search'
+                stepMethodIterative: 0
+                         stepMethod: 'ldl'
+                      ldlsThreshold: 1.000000000000000e-03
+                     iterativeMaxit: 1000
+          iterativePrecondAlgorithm: 'luinc'
+    iterativePrecondAlgorithmThresh: 0.010000000000000
+
+
+
+### sqplab_checkoptions: Armijo's linesearch can fail with Newton's method,
+###                      use unit step-size instead
+
+
+# sqplab_armijo: stop on dxmin
+
+            alpha      = 1.00000e+00
+            |d|_inf    = 8.01292e-04
+            |xp-x|_inf = 8.01292e-04
+
+
+### sqplab_checkoptions: Armijo's linesearch can fail with Newton's method,
+###                      use unit step-size instead
+
+
+### sqplab_checkoptions: Armijo's linesearch can fail with Newton's method,
+###                      use unit step-size instead
+
+
+### sqplab_checkoptions: Armijo's linesearch can fail with Newton's method,
+###                      use unit step-size instead
+
+
+# sqplab_armijo: stop on dxmin
+
+            alpha      = 1.00000e+00
+            |d|_inf    = 3.06441e-04
+            |xp-x|_inf = 3.06441e-04
+
+
+### sqplab_checkoptions: Armijo's linesearch can fail with Newton's method,
+###                      use unit step-size instead
+
+
+### sqplab_checkoptions: Armijo's linesearch can fail with Newton's method,
+###                      use unit step-size instead
+
+
+### sqplab_checkoptions: Armijo's linesearch can fail with Newton's method,
+###                      use unit step-size instead
+
+ddeParamEst: stop. Reason: Max iterations reached
+            iteration                   = 7     max = 7
+            approximation N             = 2495     max = 20000
+            |x_(i-1)-x_(i)|             = 1.50365e-05 tol = 1.00000e-03
+            |p_(i-1)-p_(i)|             = 1.13914e-02 tol = 1.00000e-02
+######################################
+Results for:task_14_reduced_population_india
+Approximation grid: 39
+Last output of step algorithm
+    iterations: 1
+     funcCount: 3
+       sqpInfo: [1x1 struct]
+
+P*: 
+   0.243851567239266
+   1.096553138391750
+   0.765837675938675
+
+Sum of squares: 2.177369e-04
+Sum of squares on the i-th step
+   1.0e-03 *
+
+  Columns 1 through 4
+
+   0.212257005038907   0.214988496821888   0.216757630564501   0.217244965011076
+
+  Columns 5 through 7
+
+   0.217578903423998   0.217678559870649   0.217736937649704
+
+X differences: |x_(i-1)-x_(i)| where i is i-th step of algorithm
+   1.0e-03 *
+
+  Columns 1 through 4
+
+                 Inf   0.120644789276536   0.122425165423490   0.051432820307840
+
+  Columns 5 through 7
+
+   0.133099600019504   0.018689556317897   0.015036472796104
+
+P differences: |p_(i-1)-p_(i)| where i is i-th step of algorithm
+  Columns 1 through 4
+
+                 Inf   0.314140673712973   0.309430564044847   0.044089839183942
+
+  Columns 5 through 7
+
+   0.041049112238243   0.067344496202767   0.011391444306563
+
+Iterations of step algorithm
+     4     2     2     2     2     1     1
+
+Number of times function is called on each step of algorithm
+     8     5     5     4     5     3     3
+
+Approximation grid density: number of elements in approximation grid per step
+          39          77         155         311         623        1247        2495
+
+Step times
+  Columns 1 through 4
+
+   0.215323000000000   0.249660000000000   0.485276000000000   0.873146000000000
+
+  Columns 5 through 7
+
+   1.929135000000000   2.665551000000000   5.414430000000000
+
+Total time: 11.92307 s
+######################################
+>> 

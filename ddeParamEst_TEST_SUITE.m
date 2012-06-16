@@ -1608,7 +1608,7 @@ pn = length(pSol);
 userConstants = {{'Nc', Nc}, {'N0', N0}};
 K = 'Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
 f = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), pn, ndelays, userConstants);
-% p_1 * (x_1 ^ 2) * (  1 - x / (Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) ))  )
+% p_1 * (x_1 ^ 2) * (  1 - x / (Nc + p_3 * (x_2 - 0.1) * exp( - p_2 * ( x_3 - 0.1 ) ))  )
 
 
 tSpan = [1870, 2500];
@@ -1620,6 +1620,7 @@ ddeOptOptions = ddeset('AbsTol', min([options.xTol, options.pTol]));
 ddeF = @(t, x, delays, p) f([x delays]', t, p);
 
 ddeXHistory = @(t, pSol) utils.populationKapitsa(t);
+% 3.844 * asin(1/sqrt(1+( (2001 - t) / 45)^2))
 
 % do extrapolation
 xdeResult = dde23(ddeF, delays(2:end), ddeXHistory, tSpan, ddeOptOptions, pSol);

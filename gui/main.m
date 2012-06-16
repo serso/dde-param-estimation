@@ -22,7 +22,7 @@ function varargout = main(varargin)
 
 % Edit the above text to modify the response to help main
 
-% Last Modified by GUIDE v2.5 17-Jun-2012 01:08:14
+% Last Modified by GUIDE v2.5 17-Jun-2012 02:35:02
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -463,7 +463,7 @@ try
     
     checkTable(handles.delaysTable, 'delays table');
     if ( ndelays > 0 )
-        delays = cell2mat(get(handles.delaysTable, 'Data'));
+        delays = cell2mat(get(handles.delaysTable, 'Data'))';
     else
         delays = [];
     end
@@ -565,18 +565,39 @@ function solveButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-[error, fStr, np, ndelays, userConstants, xHistoryStr, tData, xData, p0] = checkProblemDef(handles);
+[error, fStr, np, ndelays, userConstants, xHistoryStr, tData, xData, delays, p0] = checkProblemDef(handles);
 if ( ~error )
     [ f, fg, fh, ~, ~, ~, xHistory, ~] = ddeParamEst_checkUserInput( fStr, np, ndelays, userConstants, xHistoryStr);
     
     options = [];
+    options.optOptions = [];
+    options.sqpOptions = [];
+    options.hessian_method = 'gauss-newton';
+    options.sqpOptions.stepMethodIterative = false;
+    options.sqpOptions.stepMethod = 'ldls';
+    options.pTol = 0.1;
+    options.plotResult = true;
+    options.showResult = true;
+    options.taskName = fStr;
+    options.plotExtResult = true;
+    options.extTMax = 2300;
+    options.extFigureHandle = handles.resultFigure;
     
-    ddeParamEst(...
+    
+    [x, p, info] = ddeParamEst(...
         tData, xData, ...
         f, fg, fh, ...
         delays, xHistory, max(delays), ...
         options, np, ...
         [], [], p0);
+    
+    paramsData = get(handles.paramsResultTable,'Data');
+    for i = length(p)
+        paramsData{i} = p(i);
+        set(handles.paramsResultTable,'Data', paramsData);
+        guidata(hObject, handles);
+    end
+    
 end
 
 function checkTable(table, tableName)
@@ -659,3 +680,26 @@ function dataTable_CellEditCallback(hObject, eventdata, handles)
 %	Error: error string when failed to convert EditData to appropriate value for Data
 % handles    structure with handles and user data (see GUIDATA)
 %checkProblemData(handles);
+
+
+
+function dataDelimiterEdit_Callback(hObject, eventdata, handles)
+% hObject    handle to dataDelimiterEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of dataDelimiterEdit as text
+%        str2double(get(hObject,'String')) returns contents of dataDelimiterEdit as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function dataDelimiterEdit_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to dataDelimiterEdit (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

@@ -53,15 +53,15 @@ end
 obligatoryArgs = 10;
 
 if ( nargin <= obligatoryArgs || isempty(pLb) )
-    pLb = -Inf * ones (np, 1);
+    pLb = -Inf * ones (pn, 1);
 end
 
 if (nargin <= obligatoryArgs + 1 || isempty(pUb))
-    pUb = Inf * ones(np, 1);
+    pUb = Inf * ones(pn, 1);
 end
 
 if (nargin <= obligatoryArgs + 2 || isempty(p0))
-    p0 = zeros(np, 1);
+    p0 = zeros(pn, 1);
 end
 
 if (nargin <= obligatoryArgs + 3 || isempty(deltaT))
@@ -116,7 +116,7 @@ approximationN = ceil( (max(t) - min(t)) / minTDist ) + 1;
     fg, ...
     fh, ...
     t, x, approximationN, ...
-    np, delays, xHistory, options, ...
+    pn, delays, xHistory, options, ...
     deltaT, ...
     pLb, pUb, p0);
 
@@ -127,13 +127,21 @@ if ( options.plotResult )
     
     if (~isempty(xResult))
         
-        % plot result
-        figure('Position', [1, 1, 1024, 600]);
-        grid on;
-        hold on;
-        
-        h = gca;
-        set(h, 'FontSize', 18);
+        if ( isfield(options, 'extFigureHandle') && ~isempty(options.extFigureHandle) )
+            figure(options.extFigureHandle);
+            grid on;
+            hold on;
+            
+            h = gca;
+        else
+            % plot result
+            figure('Position', [1, 1, 1024, 600]);
+            grid on;
+            hold on;
+            
+            h = gca;
+            set(h, 'FontSize', 18);
+        end;
         
         %title(sprintf('Task: %s\nMethod: %s\nApproximation grid: %i\nTime: %0.3f s', options.taskName, options.method, approximationN, toc(timerId)));
         %title(sprintf('Task: %s', options.taskName));
@@ -186,7 +194,7 @@ if ( options.plotResult )
             
             
             extDataPlot = ddeParamEst_plot(extT, extX, '-g', options);
-            legend([resultDataPlot; inputDataPlot; extDataPlot] , {plotTextStrings{:}, 'Extrapolated result'});
+            %legend([resultDataPlot; inputDataPlot; extDataPlot] , {plotTextStrings{:}, 'Extrapolated result'});
         end
     end
 end

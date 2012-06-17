@@ -1608,7 +1608,7 @@ pn = length(pSol);
 userConstants = {{'Nc', Nc}, {'N0', N0}};
 K = 'Nc + p_3 * (x_2 - N0) * exp( - p_2 * ( x_3 - N0 ) )';
 f = ddeParamEst_checkUserInput(strcat('p_1 * (x_1 ^ 2) * (  1 - x / (', K, ')  )'), pn, ndelays, userConstants);
-% p_1 * (x_1 ^ 2) * (  1 - x / (Nc + p_3 * (x_2 - 0.1) * exp( - p_2 * ( x_3 - 0.1 ) ))  )
+% p_1 * (x_1 ^ 2) * (  1 - x / (Nc + p_3 * (x_2 - 1) * exp( - p_2 * ( x_3 - 1 ) ))  )
 
 
 tSpan = [1870, 2500];

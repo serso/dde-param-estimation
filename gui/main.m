@@ -22,7 +22,7 @@ function varargout = main(varargin)
 
 % Edit the above text to modify the response to help main
 
-% Last Modified by GUIDE v2.5 17-Jun-2012 02:35:02
+% Last Modified by GUIDE v2.5 17-Jun-2012 13:48:21
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -171,7 +171,17 @@ function adjustTable(table, newRows)
 data = get(table,'Data');
 [dataRows, dataCols] = size(data);
 if ( newRows > dataRows )
-    data = cat(1, data, cell(newRows - dataRows, dataCols));
+    cells = cell(newRows - dataRows, dataCols);
+    for row = 1:(newRows - dataRows)
+        for col = 1:dataCols
+            if ( col == 1 && dataCols > 1 ) 
+                cells{row, col} = '';
+            else
+                cells{row, col} = 0;
+            end
+        end
+    end
+    data = cat(1, data, cells);
 elseif ( newRows < dataRows )
     data = data(1:newRows,:);
 end
@@ -463,7 +473,25 @@ try
     
     checkTable(handles.delaysTable, 'delays table');
     if ( ndelays > 0 )
+        m = get(handles.delaysTable, 'Data');
+        
+        [rows, cols] = size(m);
+        
+        zeroDelayExists = false;
+        for row = 1:rows
+            for col = 1:cols
+                tmp = m(row, col);
+                if ( tmp{1} == 0 )
+                    zeroDelayExists = true;
+                end
+            end
+        end
+        
         delays = cell2mat(get(handles.delaysTable, 'Data'))';
+        if ( ~zeroDelayExists ) 
+            delays =  cat(2, 0, delays);
+            ndelays = ndelays + 1;
+        end
     else
         delays = [];
     end
@@ -508,17 +536,19 @@ data = [];
 tData = [];
 xData = [];
 
+cla(handles.resultFigure);
+
 try
     if ( get(handles.loadFromFileRadio, 'Value') )
         
         dataFileName = get(handles.dataFileNameText, 'String');
         if ( isempty(dataFileName) )
-            throw (MException ('ArgumentCheck:IllegalArgument', 'Choose the file!'))
+            throw (MException ('ArgumentCheck:IllegalArgument', 'Data file is not selected!'))
         end
         
         dataFilePath = get(handles.dataFilePathText, 'String');
         if ( isempty(dataFilePath) )
-            throw (MException ('ArgumentCheck:IllegalArgument', 'Choose the file!'))
+            throw (MException ('ArgumentCheck:IllegalArgument', 'Data file is not selected!'))
         end
         
         fileTaskName = strcat(dataFilePath, dataFileName);
@@ -551,6 +581,7 @@ try
     
     error = false;
 catch e
+    cla(handles.resultFigure);
     msgbox(e.message, e.identifier,'error');
     if ( ~strcmp(e.identifier, 'ArgumentCheck:IllegalArgument'))
         rethrow(e);
@@ -567,7 +598,13 @@ function solveButton_Callback(hObject, eventdata, handles)
 
 [error, fStr, np, ndelays, userConstants, xHistoryStr, tData, xData, delays, p0] = checkProblemDef(handles);
 if ( ~error )
-    [ f, fg, fh, ~, ~, ~, xHistory, ~] = ddeParamEst_checkUserInput( fStr, np, ndelays, userConstants, xHistoryStr);
+    addpath('./progressbar');
+    
+    dlg = ProgressDialog( ...
+    'StatusMessage', 'Close the dialog to continue', ...
+    'Indeterminate', true);   
+
+    [ f, fg, fh, ~, fgSym, fhSym, xHistory, ~] = ddeParamEst_checkUserInput( fStr, np, ndelays, userConstants, xHistoryStr);
     
     options = [];
     options.optOptions = [];
@@ -579,9 +616,12 @@ if ( ~error )
     options.plotResult = true;
     options.showResult = true;
     options.taskName = fStr;
-    options.plotExtResult = true;
-    options.extTMax = 2300;
+    options.plotExtResult = false;
     options.extFigureHandle = handles.resultFigure;
+    
+    set(handles.fgSymText, 'String', utils.symToStr(fgSym));
+    set(handles.fhSymText, 'String', utils.symToStr(fhSym));
+    guidata(hObject, handles);
     
     
     [x, p, info] = ddeParamEst(...
@@ -592,11 +632,13 @@ if ( ~error )
         [], [], p0);
     
     paramsData = get(handles.paramsResultTable,'Data');
-    for i = length(p)
-        paramsData{i} = p(i);
+    for i = 1:length(p)
+        paramsData{i, 1} = p(i);
         set(handles.paramsResultTable,'Data', paramsData);
         guidata(hObject, handles);
     end
+    
+    delete(dlg);
     
 end
 
@@ -703,3 +745,10 @@ function dataDelimiterEdit_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --------------------------------------------------------------------
+function settingsMenu_Callback(hObject, eventdata, handles)
+% hObject    handle to settingsMenu (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)

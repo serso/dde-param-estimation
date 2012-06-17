@@ -1,0 +1,48 @@
+Progress bar
+Copyright 2008-2009 Levente Hunyadi
+
+An elegant and easy-to-use progress bar dialog for MatLab utilizing the Swing GUI class JProgressBar
+
+The progress bar can be displayed and manipulated using two approaches.
+
+In the procedural style, the function waitdialog wraps the Java Swing GUI class JProgressBar for enhanced visual experience but is functionally similar to the built-in function waitbar.
+
+In the object-oriented style, ProgressDialog is a class that encapsulates a progress bar created using the waitdialog function, provides get/set access to the status message text and the progress indicator, and ensures proper cleanup on user interruption either using the cancel button or CTRL+BREAK, as well as in case an error occurs.
+
+EXAMPLE
+
+% show progress bar dialog
+dlg = ProgressDialog();
+
+maxiter = 50;
+for iter = 1 : maxiter
+    % do any long-running operation
+    pause(0.1);
+    
+    % update progress bar
+    dlg.FractionComplete = iter/maxiter;
+    
+    % update status message
+    dlg.StatusMessage = sprintf('%d%% complete', fix(100*iter/maxiter));
+end
+
+% destroy progress bar dialog explicitly
+delete(dlg);
+
+% create progress bar dialog with custom status message
+dlg = ProgressDialog( ...
+    'StatusMessage', 'Please wait until operation terminates...', ...
+    'FractionComplete', 0.25);
+pause(2);
+
+% hide status message
+dlg.StatusMessage = [];
+dlg.FractionComplete = 1;
+pause(2);
+
+% create progress bar with indeterminate state
+% previous dialog is automatically destroyed on assignment
+dlg = ProgressDialog( ...
+    'StatusMessage', 'Close the dialog to continue', ...
+    'Indeterminate', true);
+uiwait(dlg);

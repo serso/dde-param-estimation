@@ -128,11 +128,10 @@ if ( options.plotResult )
     if (~isempty(xResult))
         
         if ( isfield(options, 'extFigureHandle') && ~isempty(options.extFigureHandle) )
-            figure(options.extFigureHandle);
+            axes(options.extFigureHandle);
+            cla(gca);
             grid on;
             hold on;
-            
-            h = gca;
         else
             % plot result
             figure('Position', [1, 1, 1024, 600]);
@@ -141,6 +140,10 @@ if ( options.plotResult )
             
             h = gca;
             set(h, 'FontSize', 18);
+            
+            xlabel('t', 'FontSize', 18);
+            ylabel('x', 'FontSize', 18);
+        
         end;
         
         %title(sprintf('Task: %s\nMethod: %s\nApproximation grid: %i\nTime: %0.3f s', options.taskName, options.method, approximationN, toc(timerId)));
@@ -148,12 +151,10 @@ if ( options.plotResult )
         %plot (t, x, 'xr');
         
         tResult = utils.interpolate(t, length(xResult), 'spline');
-        resultDataPlot = ddeParamEst_plot(tResult, xResult, 'ob', options);
+        resultDataPlot = ddeParamEst_plot(tResult, xResult, '-b', options);
         inputDataPlot = ddeParamEst_plot(origT, origX, 'xr', options);
         
         [~, ~, ~, plotTextStrings] = legend('DDE parameter estimation result', 'Input', 'Location', 'Best');
-        xlabel('t', 'FontSize', 18);
-        ylabel('x', 'FontSize', 18);
         % title(options.taskName, 'FontSize', 18);
         %         saveas(h, strcat('output/', options.taskName, '_result'), 'png');
         
@@ -194,7 +195,7 @@ if ( options.plotResult )
             
             
             extDataPlot = ddeParamEst_plot(extT, extX, '-g', options);
-            %legend([resultDataPlot; inputDataPlot; extDataPlot] , {plotTextStrings{:}, 'Extrapolated result'});
+            legend([resultDataPlot; inputDataPlot; extDataPlot] , {plotTextStrings{:}, 'Extrapolated result'});
         end
     end
 end

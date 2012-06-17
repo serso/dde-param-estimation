@@ -4,7 +4,7 @@ function result = symToStr( s )
 result = char(s);
 
 result = strrep(result, 'matrix', '');
-result = substring(result, 2, length(result) - 2);
+result = result(2:length(result) - 2);
 result = strrep(result, '[', '');
 result = strrep(result, '],', ';');
 result = strrep(result, ']]', '');

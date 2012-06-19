@@ -16,7 +16,7 @@ clearData = true;
 % methods = {'euler' 'backward-euler' 'box' 'rk4'};
 
 % number of known points (i.e. values of function x(t))
-N = 200;
+N = 100;
 
 xSigmaError = 0.01;
 tSigmaError = 0.0;
@@ -954,11 +954,15 @@ optionsCopy.taskName = 'task_11';
 optionsCopy.plotResult = true;
 optionsCopy.plotExtResult = true;
 %optionsCopy.checkHessian = true;
-%optionsCopy.hessian_method = 'gauss-newton';
-optionsCopy.hessian_method = 'newton';
+optionsCopy.hessian_method = 'gauss-newton';
+%optionsCopy.hessian_method = 'newton';
 optionsCopy.sqpOptions = struct(optionsCopy.sqpOptions);
-optionsCopy.sqpOptions.stepMethodIterative = false;
-optionsCopy.sqpOptions.stepMethod = 'ldl';
+optionsCopy.sqpOptions.stepMethodIterative = true;
+%optionsCopy.sqpOptions.stepMethod = 'ldl';
+optionsCopy.sqpOptions.stepMethod = 'bicg';
+optionsCopy.sqpOptions.iterativePrecondAlgorithm = 'luinc';
+%optionsCopy.sqpOptions.iterativePrecondAlgorithm = 'ilu';
+
 optionsCopy.sqpOptions.ldlsThreshold = 0.001;
 %sqpOptions.algo_method        = 'quasi-Newton';
 optionsCopy.sqpOptions.algo_method        = 'Newton';
@@ -966,7 +970,7 @@ optionsCopy.sqpOptions.algo_method        = 'Newton';
 optionsCopy.sqpOptions.algo_globalization = 'line-search';
 %optionsCopy.sqpOptions.algo_globalization = 'unit step-size';
 
-%optionsCopy.sqpOptions.stepMethod = 'bicg';
+
 %optionsCopy.sqpOptions.iterativePrecondAlgorithmThresh = 0.0001;
 %optionsCopy.sqpOptions.miter = 3;
 

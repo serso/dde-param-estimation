@@ -35,6 +35,14 @@ if ( isfield(options, 'iterativePrecondAlgorithm') )
             L = [];
             U = [];
         end
+    elseif ( strcmp(options.iterativePrecondAlgorithm, 'ilu') )
+        setup = [];
+        setup.droptol = iterativePrecondAlgorithmThresh;
+        [L,U] = ilu(A, setup);
+        if ( strfind(lastwarn,'Incomplete upper triangular factor has') )
+            L = [];
+            U = [];
+        end
     elseif ( strcmp(options.iterativePrecondAlgorithm, 'no') )
          % no
     else
